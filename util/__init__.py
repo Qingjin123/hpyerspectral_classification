@@ -14,7 +14,7 @@ For more details, please refer to the documentation of each module.
 __version__ = '1.0.0'
 __author__ = 'Your Name'
 __email__ = 'your_email@example.com'
-__all__ = ['config', 'misc', 'metrics', 'pixel_prediction', 'show']
+__all__ = ['config', 'utils', 'metrics', 'pixel_prediction', 'show']
 
 import logging
 
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 from .config import parse_args, setup_seed
-from .misc import device, optimizer, loss, mkdir
+from .utils import device, optimizer, loss, mkdir
 from .metrics import performance, acc
 from .pixel_prediction import pixel_level_prediction
 from .show import DataVisualizer

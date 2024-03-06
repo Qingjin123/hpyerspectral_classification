@@ -17,21 +17,14 @@ def parse_args():
     parser.add_argument('--weight_decay', type=float, default=1e-5, help='Weight decay for regularization.')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size for training.')
     parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducibility')
+    parser.add_argument('--device', type=str, default='mps', help='Device to use for training')
     
     # Output-related arguments
     # parser.add_argument('--log_dir', type=str, default='results', help='Directory to save the logs')
 
     args = parser.parse_args()
 
-    # Create a dictionary of hyperparameters
-    hyperparameters = {
-        'lr': args.lr,
-        'batch_size': args.batch_size,
-        'epoch': args.epoch,
-        'weight_decay': args.weight_decay,
-    }
-
-    return args, hyperparameters
+    return args
 
 def setup_seed(seed: int = None):
     if seed is None:

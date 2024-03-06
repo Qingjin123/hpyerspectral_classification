@@ -1,5 +1,5 @@
 from config.yamls import read_yaml
-from data import load_data
+from data.load_data import DataLoader
 from process import DataProcessor, DimensionalityReducer, GraphCalculator, Neighbor
 from model.mdgcnnet import MDGCNNet
 from model.segnet import SegNet
@@ -13,4 +13,4 @@ import torch.utils.tensorboard as tb
 import matplotlib.pyplot as plt
 import numpy as np
 
-
+        

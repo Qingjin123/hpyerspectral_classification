@@ -19,7 +19,7 @@ class GCNlayer(nn.Module):
         self.out_ch = out_channels
         self.block_num = block_num
         self.batch_size = batch_size
-        self.adj_mask = adj_mask
+        self.adj_mask = torch.tensor(adj_mask).to(device)
         self.if_update = feature_update
         self.if_class = classification
         self.device = device

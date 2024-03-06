@@ -1,6 +1,6 @@
 import yaml
 
-def read_yaml(file_path: str) -> dict:
+def read_yaml(file_path: str = './config/data_info.yaml') -> dict:
     """
     Reads a YAML file and returns its contents as a dictionary.
 
