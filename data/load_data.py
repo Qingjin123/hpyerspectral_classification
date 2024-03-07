@@ -31,7 +31,11 @@ def load_data(data_config: dict, dataset_name: str) -> tuple[np.ndarray, np.ndar
 
     # 加载数据和标签
     data_key = dataset_name.lower() if dataset_name == "PaviaU" else f"{dataset_name}_corrected".lower()
+    if data_key == 'paviau':
+        data_key = 'paviaU'
     label_key = f"{dataset_name}_gt".lower()
+    if label_key == 'paviau_gt':
+        label_key = 'paviaU_gt'
 
     try:
         data = sio.loadmat(data_file)[data_key]
@@ -44,7 +48,6 @@ def load_data(data_config: dict, dataset_name: str) -> tuple[np.ndarray, np.ndar
     labels = labels.astype(np.int64)
 
     return data, labels
-
 
 class DataLoader:
     """

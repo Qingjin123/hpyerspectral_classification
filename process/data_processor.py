@@ -22,7 +22,7 @@ class DataProcessor:
         """
         unique_labels, counts = np.unique(self.label, return_counts=True)
         class_num = len(unique_labels)
-        return counts, class_num - 1
+        return counts[1:], class_num - 1
 
     def sample_mask(self, ratio: float = 0.15, seed: int = None) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -40,14 +40,15 @@ class DataProcessor:
         test_mask = np.zeros((h, w), dtype=bool)
 
         counts, _ = self.count_label()
-
+        
         if seed is not None:
             np.random.seed(seed)
 
         for i, cnt in enumerate(counts):
             indices = np.stack(np.where(self.label == i), axis=-1)
             np.random.shuffle(indices)
-            train_n = min(int(cnt * ratio), 30 if cnt > 30 else 15)
+            # train_n = min(int(cnt * ratio), 30 if cnt > 30 else 15)
+            train_n = 30 if cnt > 30 else 15
 
             train_indices = indices[:train_n]
             test_indices = indices[train_n:]
@@ -110,5 +111,5 @@ class DataProcessor:
             tuple[np.ndarray, int]: 包含分割后的超像素索引和总超像素块数的元组。
         """
         seg_index = slic(self.data, n_segments=n_segments, compactness=compactness, sigma=sigma)
-        block_num = np.max(seg_index) + 1
+        block_num = np.max(seg_index)
         return seg_index, block_num

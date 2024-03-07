@@ -22,6 +22,10 @@ train_mask, test_mask = dataprocessor.sample_mask()
 seg_index, block_num = dataprocessor.slic_segmentation()
 adj_mask = np.zeros((block_num, block_num), dtype=np.float32)
 
+print('block_num:', block_num)
+print('all counts:', counts)
+print('class num:', class_num)
+
 # show
 # dataview = DataVisualizer(data, label, args.data_name, './save/')
 # dataview.show_ground_truth()

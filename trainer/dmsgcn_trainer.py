@@ -18,7 +18,7 @@ class DMSGCNTrainer(BaseTrainer):
         self.model = SegNet(
             in_channels=in_channels,
             block_num=block_num,
-            class_num=class_num,
+            class_num=class_num+1,
             batch_size = BATCH_SIZE,
             adj_mask=adj_mask,
             device=self.device
@@ -34,7 +34,7 @@ class DMSGCNTrainer(BaseTrainer):
         sum = mask.sum()
         train_gt = gt * mask
         pre_gt = torch.cat((train_gt.unsqueeze(0).to(self.device), classes[0]),dim=0)
-        pre_gt = pre_gt.view(self.class_num+1,-1).permute(1,0)
+        pre_gt = pre_gt.view(self.class_num+2,-1).permute(1,0)
         pre_gt_ = pre_gt[torch.argsort(pre_gt[:,0],descending=True)]
         pre_gt_ = pre_gt_[:int(sum)]
         return pre_gt_
@@ -44,7 +44,7 @@ class DMSGCNTrainer(BaseTrainer):
         final, _ = self.model(self.data, self.seg_index)
         pred_gt = self._prediction(final, self.label, self.train_mask)
         
-        loss = self.loss(pred_gt[:,1:],pred_gt[:,0].long())
+        loss = self.loss(pred_gt[:,1:], pred_gt[:,0].long())
         
         self.optimizer.zero_grad()
         loss.backward()
@@ -70,7 +70,7 @@ class DMSGCNTrainer(BaseTrainer):
             loss = self.loss(pred_gt[:,1:],pred_gt[:,0].long())
 
             self.test_loss.append(loss.item())
-            loss = self.loss(pred_gt[:,1:], pred_gt [:,0].long())
+            loss = self.loss(pred_gt[:,1:], pred_gt[:,0].long())
             self.writer.add_scalar('test_loss', loss.item(), epoch)
         return pred_gt
             

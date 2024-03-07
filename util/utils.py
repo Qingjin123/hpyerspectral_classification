@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from datetime import datetime
@@ -22,7 +23,7 @@ def optimizer(optimizer_name, parameters, lr, weight_decay):
 
 def loss(loss_name):
     loss_functions = {
-        'crossentropyloss': torch.nn.CrossEntropyLoss(),
+        'crossentropyloss': F.cross_entropy,
         'nllloss': torch.nn.NLLLoss()
     }
     return loss_functions.get(loss_name.lower(), torch.nn.CrossEntropyLoss())

@@ -153,7 +153,7 @@ class SegNet(nn.Module):
             finall = self.gcnall(torch.cat((f1,f2,f3),dim=1), index)
         if self.sl == 4:
             finall = self.gcnall(torch.cat((f1,f2,f3,f4),dim=1),index)
-        
-        return finall, features
+
+        return self.softmax(finall), features
         
     
