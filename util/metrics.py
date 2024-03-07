@@ -21,7 +21,7 @@ def performance(predict_labels, gt_labels, class_num):
     
     Kappa = (PA - PE) / (1 - PE)
     
-    return OA.item(), AA.item(), Kappa.item(), AC_list.round(4)
+    return OA.item(), AA.item(), Kappa.item(), AC_list.tolist()
 
 def acc(pixel_pred, label):
     pixel_pred = pixel_pred.cpu()

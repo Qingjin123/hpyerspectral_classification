@@ -10,8 +10,8 @@ BATCH_SIZE = 1
 class DMSGCNTrainer(BaseTrainer):
     def __init__(self, config: dict):
         super().__init__(config)
-        self.model = self.create_model()
-        self.data = self.create_data()
+        # self.model = self.create_model()
+        # self.data = self.create_data()
         self.kappa = 0
         
     def create_model(self, in_channels, block_num, class_num, adj_mask):
@@ -25,6 +25,7 @@ class DMSGCNTrainer(BaseTrainer):
         )
         self.class_num = class_num
         self.block_num = block_num
+        self.model.to(self.device)
         
     def create_data(self, data, label, seg_index, train_mask, test_mask):
         super().create_data(data, label, seg_index, train_mask, test_mask)
@@ -66,6 +67,7 @@ class DMSGCNTrainer(BaseTrainer):
         # print('\ntesting...')
             final, _ = self.model(self.data, self.seg_index)
             pred_gt = self._prediction(final, self.label, self.test_mask)
+            loss = self.loss(pred_gt[:,1:],pred_gt[:,0].long())
 
             self.test_loss.append(loss.item())
             loss = self.loss(pred_gt[:,1:], pred_gt [:,0].long())
@@ -78,9 +80,10 @@ class DMSGCNTrainer(BaseTrainer):
             for epoch in tqdm(range(self.config.epoch)):
                 _ = self._train_step(epoch)
             
-            if epoch >= 100 and epoch % 10 == 0:
-                pred_gt = self._test_step(epoch)
-                self._performance(epoch, pred_gt)
+                if epoch >=100 and epoch % 10 == 0:
+                    pred_gt = self._test_step(epoch)
+                    self._performance(epoch, pred_gt)
+
         except KeyboardInterrupt:
             print("Training interrupted by user.")
             self.save_checkpoint(self.best_epoch)
@@ -92,10 +95,10 @@ class DMSGCNTrainer(BaseTrainer):
         self.writer.add_scalar('AA', AA, epoch)
         self.writer.add_scalar('kappa', kappa, epoch)
         record = {
-            'data': self.data_name,
-            'model': self.model_name,
+            'data': self.config.data_name,
+            'model': self.config.model_name,
             'seed': self.seed,
-            'lr': self.lr,
+            'lr': self.config.lr,
             'epoch': epoch,
             'OA': OA,
             'AA': AA,

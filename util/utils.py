@@ -2,6 +2,7 @@ import os
 import torch
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
+from datetime import datetime
 
 def device(device_name):
     return torch.device(device_name)
@@ -27,7 +28,12 @@ def loss(loss_name):
     return loss_functions.get(loss_name.lower(), torch.nn.CrossEntropyLoss())
 
 def mkdir(data_name, model_name):
-    base_dir = os.path.join('save', model_name, data_name)
+    # 获取当前时间的时间戳
+    current_timestamp = datetime.now().timestamp()
+    # 将时间戳转换为字符串并去掉小数部分
+    time_name = str(int(current_timestamp))
+    
+    base_dir = os.path.join('save', model_name, data_name, time_name)
     
     tb_dir = os.path.join(base_dir, 'log')
     model_dir = os.path.join(base_dir, 'model')
