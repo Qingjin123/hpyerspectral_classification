@@ -108,5 +108,6 @@ class DMSGCNTrainer(BaseTrainer):
         self.logger(record)
         if kappa > self.kappa:
             self.kappa = kappa
-            torch.save(self.model.state_dict(), self.model_dir + 'kappa:{.4f}'.format(kappa) +'_model.pth')
+            k = round(kappa, 4)
+            torch.save(self.model.state_dict(), f'{self.model_dir}/{self.config.model_name}_kappa:{k}' +'_model.pth')
         

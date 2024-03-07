@@ -50,7 +50,7 @@ class BaseTrainer:
         raise NotImplementedError("Subclasses should implement this method.")
     
     def logger(self, param: dict):
-        with open(f'{self.model_dir}/{self.model_name}_log.txt', 'a') as f:
+        with open(f'{self.model_dir}/{self.config.model_name}_log.txt', 'a') as f:
             f.write(f'{param}\n')
     
     def save_checkpoint(self, epoch):
@@ -60,10 +60,10 @@ class BaseTrainer:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'best_valid_loss': self.best_valid_loss,
         }
-        torch.save(checkpoint, f'{self.model_dir}/{self.model_name}_best.pth')
+        torch.save(checkpoint, f'{self.model_dir}/{self.config.model_name}_best.pth')
         
     def load_best_checkpoint(self):
-        checkpoint = torch.load(f'{self.model_dir}/{self.model_name}_best.pth')
+        checkpoint = torch.load(f'{self.model_dir}/{self.config.model_name}_best.pth')
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.best_valid_loss = checkpoint['best_valid_loss']
