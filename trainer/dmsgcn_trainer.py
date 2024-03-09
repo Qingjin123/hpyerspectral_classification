@@ -80,7 +80,7 @@ class DMSGCNTrainer(BaseTrainer):
             for epoch in tqdm(range(self.config.epoch)):
                 _ = self._train_step(epoch)
             
-                if epoch >=100 and epoch % 10 == 0:
+                if (epoch+1) % 3 == 0:
                     pred_gt = self._test_step(epoch)
                     self._performance(epoch, pred_gt)
 
