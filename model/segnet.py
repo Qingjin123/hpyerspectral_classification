@@ -21,8 +21,8 @@ class GCNlayer(nn.Module):
         self.out_ch = out_channels
         self.block_num = block_num
         self.batch_size = batch_size
-        self.adj_mask = torch.tensor(adj_mask).to(device)
-        self.if_update = True # feature_update
+        self.adj_mask = adj_mask
+        self.if_update = feature_update
         self.if_class = classification
         self.device = device
 
@@ -56,7 +56,7 @@ class GCNlayer(nn.Module):
             # the regional mean of input
             input_r = x.repeat(self.block_num, 1, 1, 1, 1).permute(1,0,2,3,4)
             index_oh = index_oh.unsqueeze(2)
-            input_means = torch.sum(index_oh * input_r,dim = (3,4))/(block_value_sum+(block_value_sum==0).float()).unsqueeze(2) #* mask.unsqueeze(2)
+            input_means = torch.sum(index_oh * input_r,dim = (3,4))/(block_value_sum+(block_value_sum==0).float()).unsqueeze(2)
 
             # computing the adjance metrix
             input_means_ = input_means.repeat(self.block_num, 1, 1, 1).permute(1, 2, 0, 3)
@@ -79,6 +79,9 @@ class GCNlayer(nn.Module):
 
         else:
             features = self.bn(x)
+
+        if self.if_class:
+            features = F.softmax(features, dim=1)
 
         return features
 
@@ -153,7 +156,7 @@ class SegNet(nn.Module):
             finall = self.gcnall(torch.cat((f1,f2,f3),dim=1), index)
         if self.sl == 4:
             finall = self.gcnall(torch.cat((f1,f2,f3,f4),dim=1),index)
-
-        return self.softmax(finall), features
+        
+        return finall, features
         
     
