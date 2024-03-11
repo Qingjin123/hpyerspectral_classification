@@ -6,6 +6,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import random
 from datetime import datetime
 import os
+import sklearn.metrics as sm
 
 def parser():
     parser = argparse.ArgumentParser(description='Arguments for GCN based hyperspectral image classification.')
@@ -13,9 +14,9 @@ def parser():
     parser.add_argument('--data_name', type=str, default='Indian_pines', help='Name of the dataset.')
     parser.add_argument('--model_name', type=str, default='DMSGCN', help='Name of the model.')
 
-    parser.add_argument('--batch_size', type=int, default=128, help='Batch size.')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
-    parser.add_argument('--epoch', type=int, default=3000, help='Number of training epochs.')
+    parser.add_argument('--batch_size', type=int, default=1, help='Batch size.')
+    parser.add_argument('--lr', type=float, default=0.0005, help='Learning rate.')
+    parser.add_argument('--epoch', type=int, default=200, help='Number of training epochs.')
 
     return parser.parse_args()
 
@@ -29,14 +30,16 @@ def performance(predict_labels, gt_labels, class_num):
         if q == 0:
             continue
         matrix[o-1, q-1] += 1
-#     plt.imshow(matrix)
-#     plt.show()
+
     OA = np.sum(np.trace(matrix)) / np.sum(matrix)
 
-    
     ac_list = np.zeros((class_num))
+    alpha = 1/class_num
     for k in range(len(matrix)):
-        ac_k = matrix[k, k] / sum(matrix[:, k])
+        
+        n_samples = sum(matrix[:, k])
+        ac_k = (matrix[k, k] + alpha) / (n_samples + class_num * alpha)
+        # ac_k = matrix[k, k] / sum(matrix[:, k])
         ac_list[k] = round(ac_k,4)
     
     AA = np.mean(ac_list)
@@ -48,6 +51,7 @@ def performance(predict_labels, gt_labels, class_num):
     pe = mm / (np.sum(matrix) * np.sum(matrix))
     pa = np.trace(matrix) / np.sum(matrix)
     kappa = (pa - pe) / (1 - pe)
+    
     
     return OA, AA, kappa, ac_list
 
@@ -127,3 +131,15 @@ def getLoss(loss_name):
     # Convert loss_name to lowercase and return the corresponding loss function
     # Default to CrossEntropyLoss if loss_name is not recognized
     return loss_functions.get(loss_name.lower(), torch.nn.CrossEntropyLoss())
+
+def getMetrics(predict_labels, gt_labels, class_num):
+    predict_labels = torch.max(predict_labels, dim=1)[1]
+    # predict_labels = predict_labels.cpu().numpy()
+    # gt_labels = gt_labels.cpu().numpy()
+    # # confusion_matrix = sm.confusion_matrix(gt_labels, predict_labels)
+    # OA = sm.accuracy_score(gt_labels, predict_labels)
+    # AA = sm.f1_score(gt_labels, predict_labels, average='macro')
+    # kappa = sm.cohen_kappa_score(gt_labels, predict_labels)
+    # ac_list = sm.precision_recall_fscore_support(gt_labels, predict_labels, average=None)[0]
+    # return OA, AA, kappa, ac_list.round(4)
+    print(predict_labels)

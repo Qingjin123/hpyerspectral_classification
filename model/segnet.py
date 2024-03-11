@@ -67,12 +67,10 @@ class GCNlayer(nn.Module):
             adj = torch.exp(-1 * adj)+ torch.eye(self.block_num).repeat(self.batch_size, 1, 1).to(self.device)
             if self.adj_mask is not None:
                 adj = adj * self.adj_mask
-
             # generating the adj_mean
             adj_means = input_means.repeat(self.block_num, 1, 1, 1).permute(1, 0, 2, 3) * adj.unsqueeze(3)
             adj_means = (1 - torch.eye(self.block_num).reshape(1, self.block_num, self.block_num, 1).to(self.device)) * adj_means
             adj_means = torch.sum(adj_means, dim=2)
-
             # obtaining the graph update features
             features = torch.sum(index_oh * (input_r + adj_means.unsqueeze(3).unsqueeze(4)),dim=1)
             features = self.bn(features) 
@@ -80,8 +78,8 @@ class GCNlayer(nn.Module):
         else:
             features = self.bn(x)
 
-        if self.if_class:
-            features = F.softmax(features, dim=1)
+        # if self.if_class:
+        #     features = F.softmax(features, dim=1)
 
         return features
 
@@ -157,6 +155,6 @@ class SegNet(nn.Module):
         if self.sl == 4:
             finall = self.gcnall(torch.cat((f1,f2,f3,f4),dim=1),index)
         
-        return finall, features
+        return finall, self.softmax(finall)
         
     

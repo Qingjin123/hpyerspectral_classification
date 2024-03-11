@@ -10,8 +10,8 @@ def slicData(data: np.ndarray, n_segments: int = 40, compactness: float = 0.2, s
     """
     seg_index = slic(data, n_segments=n_segments, compactness=compactness, sigma=sigma)
     block_num = np.max(seg_index)
-    seg_index = seg_index - 1 # 从0开始
-    return seg_index, block_num
+    
+    return seg_index-1, block_num
 
 # felzenszwalb
 def felzenszwalbData(data: np.ndarray, scale: float = 120, sigma: float = 0.5, min_size: int = 300):
@@ -20,7 +20,7 @@ def felzenszwalbData(data: np.ndarray, scale: float = 120, sigma: float = 0.5, m
     """
     seg_index = felzenszwalb(data, scale=scale, sigma=sigma, min_size=min_size)
     block_num = np.max(seg_index)
-    return seg_index, block_num
+    return seg_index, block_num+1
 
 # lsc
 def lscData(data: np.ndarray, region_size: int = 30, ratio: float = 0.075):
@@ -33,7 +33,7 @@ def lscData(data: np.ndarray, region_size: int = 30, ratio: float = 0.075):
     lsc_contours = lsc.getLabelContourMask()
     lsc_result = cv2.bitwise_and(data, data, mask=lsc_contours)
     block_num = np.max(lsc_labels)
-    return lsc_labels, lsc_contours, lsc_result, block_num
+    return lsc_labels, block_num+1
 
 def slicsData(data: np.ndarray, algorithm_name: str, region_size: int = 30, ruler: float = 10.0):
     algorithms = {
@@ -48,7 +48,7 @@ def slicsData(data: np.ndarray, algorithm_name: str, region_size: int = 30, rule
     slic_contours = slic.getLabelContourMask()
     slic_result = cv2.bitwise_and(data, data, mask=slic_contours)
     block_num = np.max(slic_labels)
-    return slic_labels, slic_contours, slic_result, block_num
+    return slic_labels, block_num+1
 
 def superpixels(data: np.ndarray, name: str):
     if name == 'SLIC':

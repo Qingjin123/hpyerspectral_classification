@@ -10,7 +10,7 @@ def countLabel(label: np.ndarray):
     unique_labels, counts = np.unique(label, return_counts=True)
     class_num = len(unique_labels)
     # 计算了无标记的样本
-    return counts, class_num
+    return counts[1:], class_num-1
 
 def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15):
 

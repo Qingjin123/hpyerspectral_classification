@@ -4,3 +4,5 @@
 
 __version__ = '0.1.0'
 __author__ = 'Qingjin'
+
+from show.shower import show_data, plot_slic, show_mask
