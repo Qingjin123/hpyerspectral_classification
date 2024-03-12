@@ -11,9 +11,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 
-def train(args: dict = parser(), superpixels_name: str = 'SLIC', yaml_path: str = 'dataset/data_info.yaml', data_name: str = 'Indian_pines', model_name: str = 'DMSGCN'):
+def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
+    superpixels_name = args.superpixel_name
+    model_name = args.model_name
+    data_name = args.data_name
 
     print('data name:', data_name)
+    print('superpixels name:', superpixels_name)
     data, label = loadData(readYaml(yaml_path), data_name)
     print('data shape:', data.shape)
     ndata = normData(data)
@@ -143,7 +147,8 @@ def train(args: dict = parser(), superpixels_name: str = 'SLIC', yaml_path: str 
     plt.close()
     
     writer.close()
-    return best_value 
+    print('best_oa:',best_value[1], 'best_aa:',best_value[2], 'best_kappa:',best_value[3])
+    print('best_accuracy_list:',best_value[4], 'epoch:', best_value[0])
 
 
 if __name__ == '__main__':

@@ -1,12 +1,14 @@
 from train import train
+import os
+import torch
 
-superpixels_names = ['SLIC', 'SLICS', 'MSLIC', 'SLICO', 'Felzenszwalb','LSC']
-dataset_names = ['Indian_pines', 'PaviaU', 'Salinas']
+superpixels_names = ['SLIC', 'SLICS', 'MSLIC', 'SLICO', 'Felzenszwalb', 'LSC']
+data_trains = {
+    'Indian_pines':500, 
+    'PaviaU':200, 
+    'Salinas':300
+    }
 
 for superpixels_name in superpixels_names:
-    for dataset_name in dataset_names:
-        best_value = train(superpixels_name=superpixels_name, data_name=dataset_name)
-        print('superpixels name:', superpixels_name)
-        print('dataset name:', dataset_name)
-        print('best_oa:',best_value[1], 'best_aa:',best_value[2], 'best_kappa:',best_value[3])
-        print('best_accuracy_list:',best_value[4], 'epoch:', best_value[0])
+    for key, value in data_trains.items():
+        os.system(f'python train.py --data_name {key} --superpixel_name {superpixels_name} --epoch {value}')
