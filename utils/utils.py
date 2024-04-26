@@ -134,14 +134,32 @@ def getLoss(loss_name):
     # Default to CrossEntropyLoss if loss_name is not recognized
     return loss_functions.get(loss_name.lower(), torch.nn.CrossEntropyLoss())
 
-def getMetrics(predict_labels, gt_labels, class_num):
-    predict_labels = torch.max(predict_labels, dim=1)[1]
-    # predict_labels = predict_labels.cpu().numpy()
-    # gt_labels = gt_labels.cpu().numpy()
-    # # confusion_matrix = sm.confusion_matrix(gt_labels, predict_labels)
-    # OA = sm.accuracy_score(gt_labels, predict_labels)
-    # AA = sm.f1_score(gt_labels, predict_labels, average='macro')
-    # kappa = sm.cohen_kappa_score(gt_labels, predict_labels)
-    # ac_list = sm.precision_recall_fscore_support(gt_labels, predict_labels, average=None)[0]
-    # return OA, AA, kappa, ac_list.round(4)
-    print(predict_labels)
+def getMetrics(pred, label):
+    pred_labels = pred.detach().cpu().numpy().argmax(axis=1)
+    # 真实的类别标签
+    true_labels = label.long().detach().cpu().numpy()
+
+    # 使用 sklearn 的 confusion_matrix，这里改名为 sk_confusion_matrix 避免冲突
+    confusion_mat = sm.confusion_matrix(true_labels, pred_labels)
+
+    # 计算 PA 和 AA
+    PA = np.diag(confusion_mat) / np.sum(confusion_mat, axis=1)
+
+    for i in range(confusion_mat.shape[0]):
+        # 检查分母是否为0
+        if np.sum(confusion_mat[:, i]) == 0:
+            PA[i] = 0  # 或者设置为0，取决于你的需求
+        else:
+            PA[i] = confusion_mat[i, i] / np.sum(confusion_mat[:, i])
+            
+    AA = np.nanmean(PA)
+
+    # 计算 OA
+    OA = np.diag(confusion_mat).sum() / np.sum(confusion_mat)
+
+    # 计算 Kappa
+    Kappa = sm.cohen_kappa_score(true_labels, pred_labels)
+    # ac_list
+    ac_list = PA.tolist()
+
+    return OA, AA, Kappa, ac_list

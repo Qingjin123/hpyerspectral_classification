@@ -122,6 +122,11 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
                 writer.add_scalar('test_loss', test_loss[-1], epoch)
                 # writer.add_image('test image', torch.max(torch.softmax(final[0].cpu(), dim =0),dim = 0)[1].cpu()*(label.cpu()>0).float(), epoch)
                 OA, AA, kappa, ac_list = performance(pred_gt[:,1:], pred_gt[:,0].long(), class_num+1)
+                # OA, AA, kappa, ac_list = getMetrics(pred_gt[:,1:], pred_gt[:,0].long())
+
+                print('epoch: {}, OA: {:.4f}, AA: {:.4f}, Kappa: {:.4f}'.format(epoch, OA, AA, kappa))
+                print('ac_list:', ac_list)
+
                 test_acc.append(ac_list)
                 record.append([epoch, loss1.item(), loss2.item(), ac_list, OA, AA, kappa])
                 # writer.add_scalar('test_acc', ac_list, epoch)
