@@ -12,6 +12,7 @@ class SegNet(nn.Module):
                  class_num: int,
                  batch_size: int,
                  bias: bool = False,
+                 gnn_name: str = "gcn",
                  adj_mask: np.ndarray = None,
                  device: torch.device = None,
                  scale_layer: int = 4):
@@ -20,7 +21,7 @@ class SegNet(nn.Module):
 
         # 使用 GNNlayer 构建 GCN 层
         self.gcn_layers = nn.ModuleList([
-            GNNlayer(in_channels, in_channels, block_num, batch_size, adj_mask, "gcn", device=device)
+            GNNlayer(in_channels, in_channels, block_num, batch_size, adj_mask, gnn_name, device=device)
             for _ in range(scale_layer)
         ])
 

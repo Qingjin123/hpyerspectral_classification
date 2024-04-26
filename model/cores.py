@@ -9,6 +9,7 @@ class FeatureTransform(nn.Module):
     def __init__(self,
                  in_channels: int,
                  out_channels: int):
+        super(FeatureTransform, self).__init__()
         self.weight = nn.Parameter(torch.randn(in_channels, out_channels))
         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -54,6 +55,7 @@ class DistanceMetrics(nn.Module):
     def __init__(self, 
                  metric: str = "mahalanobis",
                  out_channels: int = None):
+        super(DistanceMetrics, self).__init__()
         """
             马氏距离：mahalanobis
             余弦相似度：cosine
@@ -164,23 +166,23 @@ class GNNlayer(nn.Module):
         self.activation = nn.ReLU()
 
     def _one_hot(self, index: torch.Tensor):
-        index_oh = torch.zeros(self.batch_size, self.block_num, self.h, self.w)
+        index_oh = torch.zeros(self.batch_size, self.block_num, self.h, self.w).to(self.device)
         index_oh.scatter_(1, index, 1)
         return index_oh
     
     def _gnn_function(self):
         if self.gnn_name == "gcn":
-            return GCN()
+            return GCN(self.block_num, self.device)
         if self.gnn_name == "gat":
-            return GAT()
+            return GAT(self.block_num, self.in_channels, self.out_channels, self.device)
         if self.gnn_name == "gin":
-            return GIN()
+            return GIN(self.block_num, self.in_channels, self.out_channels, self.device)
         if self.gnn_name == "sgc":
-            return SGC()
-        if self.gnn_name == "gat":
-            return GAT()
+            return SGC(self.block_num, self.device, 3)
+        if self.gnn_name == "gcnii":
+            return GCNII(self.block_num, self.device)
         if self.gnn_name == "fagcn":
-            return FAGCN()
+            return FAGCN(self.block_num, self.device)
         else:
             raise ValueError(f"Unsupported GNN function: {self.gnn_name}")
 
@@ -194,7 +196,7 @@ class GNNlayer(nn.Module):
         if self.feature_update:
             index = nn.UpsamplingNearest2d(size=(self.h, self.w))(index.float()).long()
 
-            index_oh = self._ont_hot(index)
+            index_oh = self._one_hot(index)
             input_r, regional_means = self.regional_means(x, index_oh)
             # regional_means: [batch_size, block_num, in_channels]
             adj = self.adj(regional_means)
