@@ -51,88 +51,100 @@ class RegionalMeans(nn.Module):
         return input_r, regional_means
     
     
-class DistanceMetrics(nn.Module):
-    def __init__(self, 
-                 metric: str = "mahalanobis",
-                 out_channels: int = None):
-        super(DistanceMetrics, self).__init__()
-        """
-            马氏距离：mahalanobis
-            余弦相似度：cosine
-            对称KL散度：kl
-        """
-        self.metric = metric
-        if metric == "mahalanobis":
-            self.W = nn.Parameter(torch.randn(out_channels, out_channels))
-            nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
+# class DistanceMetrics(nn.Module):
+#     def __init__(self, 
+#                  metric: str = "mahalanobis",
+#                  out_channels: int = None):
+#         super(DistanceMetrics, self).__init__()
+#         """
+#             马氏距离：mahalanobis
+#             余弦相似度：cosine
+#         """
+#         self.metric = metric
+#         if metric == "mahalanobis":
+#             self.W = nn.Parameter(torch.randn(out_channels, out_channels))
+#             nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
 
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-        """
-        计算两个张量之间的距离或相似度。
+#     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+#         """
+#         计算两个张量之间的距离或相似度。
 
-        Args:
-            x1: 第一个张量，形状为 [..., feature_dim]。
-            x2: 第二个张量，形状为 [..., feature_dim]。
+#         Args:
+#             x1: 第一个张量，形状为 [..., feature_dim]。
+#             x2: 第二个张量，形状为 [..., feature_dim]。
 
-        Returns:
-            距离或相似度张量，形状为 [...]。
-        """
-        if self.metric == "mahalanobis":
-            return self.mahalanobis_distance(x1, x2)
-        elif self.metric == "cosine":
-            return self.cosine_similarity(x1, x2)
-        elif self.metric == "kl":
-            return self.kl_divergence(x1, x2)
-        else:
-            raise ValueError(f"Unsupported metric: {self.metric}")
+#         Returns:
+#             距离或相似度张量，形状为 [...]。
+#         """
+#         if self.metric == "mahalanobis":
+#             return self.mahalanobis_distance(x1, x2)
+#         elif self.metric == "cosine":
+#             return self.cosine_similarity(x1, x2)
+#         else:
+#             raise ValueError(f"Unsupported metric: {self.metric}")
 
-    def cosine_similarity(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=-1)
+#     def cosine_similarity(self, x1, x2):
+#         return F.cosine_similarity(x1, x2, dim=-1)
 
-    def kl_divergence(self, x1, x2):
-        # 对称 KL 散度
-        kl1 = F.kl_div(F.log_softmax(x1, dim=-1), F.softmax(x2, dim=-1), reduction='none')
-        kl2 = F.kl_div(F.log_softmax(x2, dim=-1), F.softmax(x1, dim=-1), reduction='none')
-        return (kl1 + kl2) / 2
+#     def kl_divergence(self, x1, x2):
+#         # 对称 KL 散度
+#         kl1 = F.kl_div(F.log_softmax(x1, dim=-1), F.softmax(x2, dim=-1), reduction='none')
+#         kl2 = F.kl_div(F.log_softmax(x2, dim=-1), F.softmax(x1, dim=-1), reduction='none')
+#         return (kl1 + kl2) / 2
     
-    def mahalanobis_distance(self, x1, x2):
-        cov = torch.matmul(self.W, self.W.T)  # 计算协方差矩阵
-        diff = x1 - x2
-        inv_cov = torch.inverse(cov)
-        mahalanobis = torch.matmul(diff.unsqueeze(1), inv_cov)
-        mahalanobis = torch.matmul(mahalanobis, diff.unsqueeze(-1))
-        return torch.sqrt(mahalanobis.squeeze())
+#     def mahalanobis_distance(self, x1, x2):
+#         M = self.W * self.W.T # 计算协方差矩阵
+#         diff = x1 - x2
+#         mdist = torch.einsum('bmnk,kl->bnml', diff, M)
+#         mdist_squared = torch.sum(mdist ** 2, dim=-1)
+#         adj = torch.sqrt(mdist_squared)
+#         return adj
     
+
+# class Adj(nn.Module):
+#     def __init__(self, block_num: int, metric: str = "mahalanobis", 
+#                  out_channels: int = None, device: torch.device = None):
+#         super(Adj, self).__init__()
+#         self.block_num = block_num
+#         self.distance_metric = DistanceMetrics(metric, out_channels)
+#         self.device = device
+
+#     def forward(self, regional_means: torch.Tensor) -> torch.Tensor:
+#         """
+#         计算邻接矩阵。
+
+#         Args:
+#             regional_means: 区域均值特征张量，形状为 [batch_size, block_num, in_channels]。
+
+#         Returns:
+#             邻接矩阵，形状为 [batch_size, block_num, block_num]。
+#         """
+#         # 计算距离或相似度
+#         distance_or_similarity = self.distance_metric(
+#             regional_means.unsqueeze(2), regional_means.unsqueeze(1)
+#         )
+#         adj = torch.exp(-1 * distance_or_similarity)
+#         return adj
 
 class Adj(nn.Module):
-    def __init__(self, block_num: int, metric: str = "mahalanobis", 
-                 out_channels: int = None, device: torch.device = None):
+    def __init__(self,
+                 block_num: int,
+                 batch_size: int = 1,
+                 out_channels: int = None,
+                 device: torch.device = None):
         super(Adj, self).__init__()
         self.block_num = block_num
-        self.distance_metric = DistanceMetrics(metric, out_channels)
         self.device = device
-
-    def forward(self, regional_means: torch.Tensor) -> torch.Tensor:
-        """
-        计算邻接矩阵。
-
-        Args:
-            regional_means: 区域均值特征张量，形状为 [batch_size, block_num, in_channels]。
-
-        Returns:
-            邻接矩阵，形状为 [batch_size, block_num, block_num]。
-        """
-        # 计算距离或相似度
-        distance_or_similarity = self.distance_metric(
-            regional_means.unsqueeze(2), regional_means.unsqueeze(1)
-        )
-
-        # 将距离或相似度转换为邻接矩阵
-        if self.distance_metric.metric == "euclidean" or self.distance_metric.metric == "mahalanobis":
-            adj = torch.exp(-distance_or_similarity)
-        else:
-            adj = distance_or_similarity
-
+        self.W = nn.Parameter(torch.randn(out_channels, out_channels))
+        nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
+        self.batch_size = batch_size
+    def forward(self, regional_means: torch.Tensor, c: int):
+        regional_means_ = regional_means.repeat(self.block_num, 1, 1, 1).permute(1, 2, 0, 3)
+        regional_means_ = (regional_means_ - regional_means.unsqueeze(1)).permute(0, 2, 1, 3)
+        M = torch.mm(self.W, self.W.T)
+        adj = torch.matmul(regional_means_.reshape(self.batch_size, -1, c), M)
+        adj = torch.sum(adj * regional_means_.reshape(self.batch_size, -1, c), dim=2).view(self.batch_size, self.block_num, self.block_num)
+        adj = torch.exp(-1 * adj)+ torch.eye(self.block_num).repeat(self.batch_size, 1, 1).to(self.device)
         return adj
 
 
@@ -160,7 +172,7 @@ class GNNlayer(nn.Module):
 
         self.feature_transform = FeatureTransform(in_channels, out_channels)
         self.regional_means = RegionalMeans(block_num, device)
-        self.adj = Adj(block_num, "mahalanobis", out_channels, device)
+        self.adj = Adj(block_num, batch_size, out_channels, device)
         self.feature_propagation = self._gnn_function()
         self.bn = nn.BatchNorm2d(out_channels)
         self.activation = nn.ReLU()
@@ -191,19 +203,20 @@ class GNNlayer(nn.Module):
             x: [batch_size, in_channels, height, width]
             index: [batch_size, _ , height, width]
         """
-        self.b, self.c, self.h, self.w = x.shape
         x = self.feature_transform(x)
+        self.b, self.c, self.h, self.w = x.shape
         if self.feature_update:
             index = nn.UpsamplingNearest2d(size=(self.h, self.w))(index.float()).long()
 
             index_oh = self._one_hot(index)
             input_r, regional_means = self.regional_means(x, index_oh)
+            index_oh = index_oh.unsqueeze(2)
+               
             # regional_means: [batch_size, block_num, in_channels]
-            adj = self.adj(regional_means)
+            adj = self.adj(regional_means, self.c)
             if self.adj_mask is not None:
                 adj = adj * self.adj_mask
             adj_means = self.feature_propagation(regional_means, adj)
-
             # obtaining the graph update features
             features = torch.sum(index_oh * (input_r + adj_means.unsqueeze(3).unsqueeze(4)),dim=1)
             features = self.activation(features)
@@ -212,7 +225,6 @@ class GNNlayer(nn.Module):
         else:
             features = self.activation(x)
             features = self.bn(features)
-
         return features
 
             

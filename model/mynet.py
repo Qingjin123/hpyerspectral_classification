@@ -31,7 +31,7 @@ class SegNet(nn.Module):
             block_num=block_num,
             batch_size=batch_size,
             adj_mask=adj_mask,
-            gnn_name="gcn",
+            gnn_name=gnn_name,
             classification=True,
             device=device
         )
@@ -60,7 +60,7 @@ class SegNet(nn.Module):
             f = gcn_layer(x, index)
             f_p = self.maxpool(f)
             features.append(upsample(f_p))
-
+        
         finall = self.gcnall(torch.cat(features, dim=1), index)
 
         return finall, self.softmax(finall)

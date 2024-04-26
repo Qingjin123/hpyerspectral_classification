@@ -56,7 +56,7 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
         block_num=block_num,
         class_num=class_num+1,
         batch_size=args.batch_size,
-        gnn_name='gcn',
+        gnn_name='gat',
         adj_mask=adj_mask,
         device=device
         )

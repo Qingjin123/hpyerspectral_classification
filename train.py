@@ -90,7 +90,7 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
         model.train()
         # print('training, epochs: ', epoch)
         final, finalsoft = model(ndata, seg_index)
-
+        exit()
         pred_gt = prediction(final, label, train_mask)
         
         loss1 = loss_function(pred_gt[:,1:],pred_gt[:,0].long())
