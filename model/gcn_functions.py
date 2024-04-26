@@ -97,7 +97,7 @@ class GAT(nn.Module):
             head_x = x[:, :, head, :].unsqueeze(2)  # shape: [B, N, 1, out_channels]
 
             # 将特征展平后再与原特征拼接
-            flat_head_x = head_x.permute(0, 2, 3, 1).contiguous().view(B, 1, out_channels, N)  # shape: [B, 1, out_channels, N]
+            flat_head_x = head_x.permute(0, 2, 3, 1).contiguous().view(B, 1, self.out_channels, N)  # shape: [B, 1, out_channels, N]
 
             # 拼接特征
             concat_x = torch.cat([head_x, flat_head_x], dim=1)  # shape: [B, 2, 1, out_channels]
