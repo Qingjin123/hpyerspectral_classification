@@ -1,5 +1,6 @@
 from sklearn.preprocessing import normalize
 import numpy as np
+import math
 
 def normData(data: np.ndarray):
     mean = np.mean(data)
@@ -12,7 +13,7 @@ def countLabel(label: np.ndarray):
     # 计算了无标记的样本
     return counts[1:], class_num-1
 
-def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15):
+def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15, if_ratio: bool = False):
 
     h, w = label.shape
     train_mask = np.zeros((h, w), dtype=bool)
@@ -22,8 +23,10 @@ def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15):
     for i, cut in enumerate(count):
         indexs = np.argwhere(label == i)
         np.random.shuffle(indexs)
-        # train_num = int(cut * ratio)
-        train_n = 30 if cut > 30 else 15
+        if if_ratio:
+            train_n = math.ceil(cut * ratio)
+        else:
+            train_n = 30 if cut > 30 else 15
         train_indexs = indexs[:train_n]
         train_mask[train_indexs[:, 0], train_indexs[:, 1]] = 1
         test_mask[train_indexs[:, 0], train_indexs[:, 1]] = 0

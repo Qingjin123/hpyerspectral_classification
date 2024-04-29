@@ -2,7 +2,7 @@ from load_data import loadData
 from logger import readYaml
 from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
-from utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed, getMetrics
+from utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed
 from show import show_data, show_mask, plot_slic
 from model import mynet
 import torch.utils.tensorboard as tb
@@ -51,6 +51,15 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
     seg_index = torch.from_numpy(seg_index).to(device)
     adj_mask = torch.from_numpy(adj_mask).to(device)
 
+    # model = mynet.SegNet(
+    #     in_channels=ndata.shape[2],
+    #     block_num=block_num,
+    #     class_num=class_num+1,
+    #     batch_size=args.batch_size,
+    #     gnn_name='gat',
+    #     adj_mask=adj_mask,
+    #     device=device
+    #     )
     model = mynet.SegNet(
         in_channels=ndata.shape[2],
         block_num=block_num,
@@ -122,7 +131,7 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
                 test_loss.append(float(loss2))
                 writer.add_scalar('test_loss', test_loss[-1], epoch)
                 # writer.add_image('test image', torch.max(torch.softmax(final[0].cpu(), dim =0),dim = 0)[1].cpu()*(label.cpu()>0).float(), epoch)
-                OA, AA, kappa, ac_list = performance(pred_gt[:,1:], pred_gt[:,0].long(), class_num+1)
+                OA, AA, kappa, ac_list = performance(pred_gt[:,1:].cpu(), pred_gt[:,0].long().cpu(), class_num)
                 # OA, AA, kappa, ac_list = getMetrics(pred_gt[:,1:], pred_gt[:,0].long())
 
                 print('epoch: {}, OA: {:.4f}, AA: {:.4f}, Kappa: {:.4f}'.format(epoch, OA, AA, kappa))

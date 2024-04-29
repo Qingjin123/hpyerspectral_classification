@@ -5,7 +5,7 @@ __author__ = 'Qingjin'
 
 
 from process_data.data_processor import normData, countLabel, sampleMask
-from process_data.superpixels import superpixels
+from process_data.superpixels import superpixels, showSuperpixels
 
 '''
     superpixels name:

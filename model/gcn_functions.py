@@ -62,73 +62,6 @@ class SGC(nn.Module):
         adj_means = torch.sum(adj_means, dim=2)
         return adj_means
 
-class GAT(nn.Module):
-    def __init__(self, block_num: int, in_channels: int, out_channels: int, device: torch.device,
-                 heads: int = 8, concat: bool = True, dropout: float = 0.6):
-        super(GAT, self).__init__()
-        self.block_num = block_num
-        self.device = device
-        self.heads = heads
-        self.concat = concat
-
-        # 注意力机制参数
-        self.attn_linear = nn.Linear(in_channels, heads * out_channels)
-        self.attn_score = nn.Linear(2 * heads * out_channels, 1, bias=False)
-        self.leakyrelu = nn.LeakyReLU(negative_slope=0.2)
-        self.dropout = nn.Dropout(p=dropout)
-
-        # 输出层参数 (如果 concat=False)
-        if not concat:
-            self.out_linear = nn.Linear(heads * out_channels, out_channels)
-
-        self.out_channels = out_channels
-
-    def forward(self, regional_means, adj):
-        B, N, C = regional_means.size()  # B: batch size, N: block number, C: in_channels
-        assert adj.shape == (B, N, N)  
-
-        # 将输入特征通过线性层并重塑为 (B, N, heads, out_channels)
-        x = self.attn_linear(regional_means).view(B, N, self.heads, self.out_channels)
-
-        # 对于每一个头部，分别计算注意力得分
-        attn_scores = []
-        for head in range(self.heads):
-            # 提取单个头部的特征
-            head_x = x[:, :, head, :].unsqueeze(2)  # shape: [B, N, 1, out_channels]
-
-            # 将特征展平后再与原特征拼接
-            flat_head_x = head_x.permute(0, 2, 3, 1).contiguous().view(B, 1, self.out_channels, N)  # shape: [B, 1, out_channels, N]
-
-            # 拼接特征
-            concat_x = torch.cat([head_x, flat_head_x], dim=1)  # shape: [B, 2, 1, out_channels]
-            # shape: [B, N, N, 2*out_channels]
-            alpha_head = self.attn_score(concat_x).squeeze(-1)  # shape: [B, N, N]
-
-            # 将注意力得分与邻接矩阵相乘并应用激活函数、Dropout
-            alpha_head = alpha_head * adj.unsqueeze(-1)
-            alpha_head = self.leakyrelu(alpha_head)
-            alpha_head = self.dropout(alpha_head)
-
-            # 归一化注意力得分
-            alpha_head = F.softmax(alpha_head, dim=-1)
-
-            attn_scores.append(alpha_head)
-
-        # 将所有头部的注意力得分堆叠起来
-        alpha = torch.stack(attn_scores, dim=2)  # shape: [B, N, N, heads]
-
-        # 使用注意力得分加权聚合邻域节点特征
-        adj_means = torch.einsum('bnih,bnch->bnhc', alpha, x)  # 或者使用torch.bmm(alpha.permute(0, 3, 1, 2), x)
-
-        # 如果concat=True，则保留多头注意力结果；否则取均值并通过输出线性层
-        if self.concat:
-            adj_means = adj_means.reshape(B, N, self.heads * self.out_channels)
-        else:
-            adj_means = adj_means.mean(dim=2)
-            adj_means = self.out_linear(adj_means)
-
-        return adj_means
-
 class GIN(nn.Module):
     def __init__(self, block_num: int, in_channels: int, out_channels: int, device: torch.device,
                  hidden_channels: int = 64, eps: float = 0.):
@@ -184,3 +117,64 @@ class FAGCN(nn.Module):
         output = self.alpha * xL + (1 - self.alpha) * xH
         return output
 
+class GAT(nn.Module):
+    # v2
+    def __init__(self, 
+                 in_features: int, 
+                 out_features: int,
+                 n_heads: int,
+                 is_concat: bool = True,
+                 dropout: float = 0.6,
+                 leaky_relu_negative_slope: float = 0.2,
+                 share_weights: bool = False):
+        super(GAT, self).__init__()
+        
+        self.is_concat = is_concat
+        self.n_heads = n_heads
+        self.share_weights = share_weights
+
+        if self.is_concat:
+            assert out_features % n_heads == 0
+            self.n_hidden = out_features // n_heads
+        else:
+            self.n_hidden = out_features
+
+        self.linear_l = nn.Linear(in_features, self.n_hidden * n_heads, bias=False)
+
+        if self.share_weights:
+            self.linear_r = self.linear_l
+        else:
+            self.linear_r = nn.Linear(in_features, self.n_hidden * n_heads, bias=False)
+
+        self.attn = nn.Linear(self.n_hidden, 1, bias=False)
+
+        self.activation = nn.LeakyReLU(negative_slope=leaky_relu_negative_slope)
+        self.softmax = nn.Softmax(dim=2)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, h: torch.Tensor, adj_mat: torch.Tensor):
+        batch_size, n_nodes, in_features = h.shape
+        adj_mat = adj_mat.unsqueeze(2).repeat(1, 1, self.n_heads, 1)  # 复制到每个注意力头
+
+        g_l = self.linear_l(h).view(n_nodes, self.n_heads, self.n_hidden)
+        g_r = self.linear_r(h).view(n_nodes, self.n_heads, self.n_hidden)
+        g_l_repeat = g_l.repeat(n_nodes, 1, 1)
+        g_r_repeat_interleave = g_r.repeat_interleave(n_nodes, dim=0)
+        g_sum = g_l_repeat + g_r_repeat_interleave
+        g_sum = g_sum.view(n_nodes, n_nodes, self.n_heads, self.n_hidden)
+        e = self.attn(self.activation(g_sum))
+        e = e.squeeze(-1)
+        assert adj_mat.shape[0] == 1 or adj_mat.shape[0] == n_nodes
+        assert adj_mat.shape[1] == 1 or adj_mat.shape[1] == n_nodes
+        assert adj_mat.shape[2] == 1 or adj_mat.shape[2] == self.n_heads
+        
+        adj_mat = torch.transpose(adj_mat, 2, 3) 
+        e = e.masked_fill(adj_mat == 0, float('-inf'))
+        a = self.softmax(e)
+        a = self.dropout(a)
+        a = a.squeeze(0) 
+        attn_res = torch.einsum('ijh,jhf->ihf', a, g_r)
+        if self.is_concat:
+            return attn_res.reshape(batch_size, n_nodes, self.n_heads * self.n_hidden)
+        else:
+            return attn_res.mean(dim=1)

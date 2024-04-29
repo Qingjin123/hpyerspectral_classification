@@ -49,82 +49,8 @@ class RegionalMeans(nn.Module):
         regional_means = torch.sum(index_oh * input_r, dim=(3,4)) / (block_value_sum + (block_value_sum == 0).float()).unsqueeze(2)
 
         return input_r, regional_means
-    
-    
-# class DistanceMetrics(nn.Module):
-#     def __init__(self, 
-#                  metric: str = "mahalanobis",
-#                  out_channels: int = None):
-#         super(DistanceMetrics, self).__init__()
-#         """
-#             马氏距离：mahalanobis
-#             余弦相似度：cosine
-#         """
-#         self.metric = metric
-#         if metric == "mahalanobis":
-#             self.W = nn.Parameter(torch.randn(out_channels, out_channels))
-#             nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
 
-#     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-#         """
-#         计算两个张量之间的距离或相似度。
 
-#         Args:
-#             x1: 第一个张量，形状为 [..., feature_dim]。
-#             x2: 第二个张量，形状为 [..., feature_dim]。
-
-#         Returns:
-#             距离或相似度张量，形状为 [...]。
-#         """
-#         if self.metric == "mahalanobis":
-#             return self.mahalanobis_distance(x1, x2)
-#         elif self.metric == "cosine":
-#             return self.cosine_similarity(x1, x2)
-#         else:
-#             raise ValueError(f"Unsupported metric: {self.metric}")
-
-#     def cosine_similarity(self, x1, x2):
-#         return F.cosine_similarity(x1, x2, dim=-1)
-
-#     def kl_divergence(self, x1, x2):
-#         # 对称 KL 散度
-#         kl1 = F.kl_div(F.log_softmax(x1, dim=-1), F.softmax(x2, dim=-1), reduction='none')
-#         kl2 = F.kl_div(F.log_softmax(x2, dim=-1), F.softmax(x1, dim=-1), reduction='none')
-#         return (kl1 + kl2) / 2
-    
-#     def mahalanobis_distance(self, x1, x2):
-#         M = self.W * self.W.T # 计算协方差矩阵
-#         diff = x1 - x2
-#         mdist = torch.einsum('bmnk,kl->bnml', diff, M)
-#         mdist_squared = torch.sum(mdist ** 2, dim=-1)
-#         adj = torch.sqrt(mdist_squared)
-#         return adj
-    
-
-# class Adj(nn.Module):
-#     def __init__(self, block_num: int, metric: str = "mahalanobis", 
-#                  out_channels: int = None, device: torch.device = None):
-#         super(Adj, self).__init__()
-#         self.block_num = block_num
-#         self.distance_metric = DistanceMetrics(metric, out_channels)
-#         self.device = device
-
-#     def forward(self, regional_means: torch.Tensor) -> torch.Tensor:
-#         """
-#         计算邻接矩阵。
-
-#         Args:
-#             regional_means: 区域均值特征张量，形状为 [batch_size, block_num, in_channels]。
-
-#         Returns:
-#             邻接矩阵，形状为 [batch_size, block_num, block_num]。
-#         """
-#         # 计算距离或相似度
-#         distance_or_similarity = self.distance_metric(
-#             regional_means.unsqueeze(2), regional_means.unsqueeze(1)
-#         )
-#         adj = torch.exp(-1 * distance_or_similarity)
-#         return adj
 
 class Adj(nn.Module):
     def __init__(self,
@@ -186,10 +112,10 @@ class GNNlayer(nn.Module):
         if self.gnn_name == "gcn":
             return GCN(self.block_num, self.device)
         if self.gnn_name == "gat":
-            return GAT(self.block_num, self.in_channels, self.out_channels, self.device)
+            return GAT(self.in_channels, self.out_channels, n_heads=8)
         if self.gnn_name == "gin":
             return GIN(self.block_num, self.in_channels, self.out_channels, self.device)
-        if self.gnn_name == "sgc":
+        if self.gnn_name == "sgc": # 表现不佳，很可能因为邻接矩阵的计算方式
             return SGC(self.block_num, self.device, 3)
         if self.gnn_name == "gcnii":
             return GCNII(self.block_num, self.device)
@@ -226,6 +152,8 @@ class GNNlayer(nn.Module):
             features = self.activation(x)
             features = self.bn(features)
         return features
+    
+
 
             
 

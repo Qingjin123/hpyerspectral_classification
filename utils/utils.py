@@ -14,48 +14,21 @@ def parser():
     parser.add_argument('--data_name', type=str, default='Indian_pines', help='Name of the dataset.')
     parser.add_argument('--model_name', type=str, default='DMSGCN', help='Name of the model.')
     parser.add_argument('--superpixel_name', type=str, default='SLIC', help='Name of superpixel function')
-
+    parser.add_argument('--gnn_function_name', type=str, default='gcn', help='Name of gnn function')
+    parser.add_argument('--ratio', type=float, default=0.15, help='Ratio of the training data.')
+    parser.add_argument('--n_segments', type=int, default=40, help='Number of superpixels.')
+    parser.add_argument('--seeds', type=int, default=None, help='Seeds for random.')
+    parser.add_argument('--device_name', type=str, default=None, help='Name of the device.')
+    parser.add_argument('--yaml_path', type=str, default='dataset/data_info.yaml', help='Path of the yaml file.')
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay.')
+    parser.add_argument('--if_ratio', type=bool, default=False, help='If ratio.')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.0005, help='Learning rate.')
     parser.add_argument('--epoch', type=int, default=500, help='Number of training epochs.')
 
     return parser.parse_args()
 
-def performance(predict_labels, gt_labels, class_num):
-    matrix = np.zeros((class_num, class_num))
-    predict_labels = torch.max(predict_labels,dim=1)[1]
-    
-    for j in range(len(predict_labels)):
-        o = predict_labels[j]
-        q = gt_labels[j]
-        if q == 0:
-            continue
-        matrix[o-1, q-1] += 1
 
-    OA = np.sum(np.trace(matrix)) / np.sum(matrix)
-
-    ac_list = np.zeros((class_num))
-    # alpha = 1/class_num
-    alpha = 1e-10
-    for k in range(len(matrix)):
-        
-        n_samples = sum(matrix[:, k])
-        ac_k = (matrix[k, k] + alpha) / (n_samples + class_num * alpha)
-        # ac_k = matrix[k, k] / sum(matrix[:, k])
-        ac_list[k] = round(ac_k,4)
-    
-    AA = np.mean(ac_list)
-
-    
-    mm = 0
-    for l in range(matrix.shape[0]):
-        mm += np.sum(matrix[l]) * np.sum(matrix[:, l])
-    pe = mm / (np.sum(matrix) * np.sum(matrix))
-    pa = np.trace(matrix) / np.sum(matrix)
-    kappa = (pa - pe) / (1 - pe)
-    
-    
-    return OA, AA, kappa, ac_list
 
 def calculateTopkAccuracy(y_pred, y, k = 5):
     with torch.no_grad():
@@ -87,7 +60,6 @@ def mkdir(data_name: str, model_name: str):
 def setupSeed(seed: int = None):
     if seed is None:
         seed = random.randint(0, 2**32)
-    print(f'Random seed: {seed}')
     
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -98,10 +70,19 @@ def setupSeed(seed: int = None):
     return seed
 
 def getDevice(device_name: str):
-    if device_name == 'cuda':
-        import torch.backends.cudnn as cudnn
-        cudnn.benchmark = True
-    return torch.device(device_name)
+    if device_name == None:
+        # 检测时cuda环境还是mps环境还是cpu环境
+        if torch.backends.mps.is_available():
+            device = torch.device("mps")  # 使用 Apple Silicon GPU
+        elif torch.cuda.is_available():
+            device = torch.device("cuda")  # 使用其他 GPU
+            import torch.backends.cudnn as cudnn
+            cudnn.benchmark = True
+        else:
+            device = torch.device("cpu")  # 使用 CPU
+        return device
+    else:
+        return torch.device(device_name)
 
 # optimizer
 def getOptimizer(optimizer_name: str, parameters: list, lr: float, weight_decay: float):
@@ -134,32 +115,64 @@ def getLoss(loss_name):
     # Default to CrossEntropyLoss if loss_name is not recognized
     return loss_functions.get(loss_name.lower(), torch.nn.CrossEntropyLoss())
 
-def getMetrics(pred, label):
-    pred_labels = pred.detach().cpu().numpy().argmax(axis=1)
-    # 真实的类别标签
-    true_labels = label.long().detach().cpu().numpy()
+def calculate_confusion_matrix(pred_labels, true_labels, class_num):
+    """计算混淆矩阵，忽略标签为0的数据"""
+    matrix = np.zeros((class_num, class_num))  # class_num-1因为第一个类别被忽略
+    for pred, true in zip(pred_labels, true_labels):
+        if true > 0:  # 忽略true_labels为0的情况
+            matrix[pred-1, true-1] += 1
+    return matrix
 
-    # 使用 sklearn 的 confusion_matrix，这里改名为 sk_confusion_matrix 避免冲突
-    confusion_mat = sm.confusion_matrix(true_labels, pred_labels)
+def calculate_accuracy(matrix):
+    """计算每类的准确率"""
+    with np.errstate(divide='ignore', invalid='ignore'):
+        accuracy = np.diag(matrix) / np.sum(matrix, axis=0)
+        accuracy = np.nan_to_num(accuracy)  # 将NaN转换为0
+    return np.round(accuracy, 4)
 
-    # 计算 PA 和 AA
-    PA = np.diag(confusion_mat) / np.sum(confusion_mat, axis=1)
+def calculate_overall_accuracy(matrix):
+    """计算总体准确率(OA)"""
+    total = np.sum(matrix)
+    if total == 0:
+        return 0
+    return np.trace(matrix) / total
 
-    for i in range(confusion_mat.shape[0]):
-        # 检查分母是否为0
-        if np.sum(confusion_mat[:, i]) == 0:
-            PA[i] = 0  # 或者设置为0，取决于你的需求
-        else:
-            PA[i] = confusion_mat[i, i] / np.sum(confusion_mat[:, i])
-            
-    AA = np.nanmean(PA)
+def calculate_average_accuracy(accuracies):
+    """计算平均准确率(AA)"""
+    if np.isnan(accuracies).all():  # 如果所有值都是NaN，则返回0
+        return 0
+    return np.nanmean(accuracies)
 
-    # 计算 OA
-    OA = np.diag(confusion_mat).sum() / np.sum(confusion_mat)
+def calculate_kappa(matrix):
+    """计算Kappa系数"""
+    total = np.sum(matrix)
+    if total == 0:
+        return 0
+    pe = np.sum(np.sum(matrix, axis=0) * np.sum(matrix, axis=1)) / (total * total)
+    pa = np.trace(matrix) / total
+    if 1 - pe == 0:
+        return 1  # 如果分母为0，则假设完美一致，返回1
+    return (pa - pe) / (1 - pe)
 
-    # 计算 Kappa
-    Kappa = sm.cohen_kappa_score(true_labels, pred_labels)
-    # ac_list
-    ac_list = PA.tolist()
-
-    return OA, AA, Kappa, ac_list
+def performance(predict_labels, gt_labels, class_num):
+    """评估模型性能
+    
+    参数:
+    predict_labels -- 模型的预测标签 (torch tensor)
+    gt_labels -- 真实标签 (numpy array)
+    class_num -- 总类别数（包括一个不参与分类的类别）
+    
+    返回:
+    OA -- 总体准确率
+    AA -- 平均准确率
+    kappa -- Kappa系数
+    accuracies -- 每类的准确率列表
+    """
+    pred_labels = torch.argmax(predict_labels, dim=1).numpy()  # 从tensor转换为numpy，并取最大值索引
+    matrix = calculate_confusion_matrix(pred_labels, gt_labels, class_num)
+    accuracies = calculate_accuracy(matrix)
+    OA = calculate_overall_accuracy(matrix)
+    AA = calculate_average_accuracy(accuracies)
+    kappa = calculate_kappa(matrix)
+    
+    return OA, AA, kappa, accuracies

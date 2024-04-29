@@ -1,7 +1,8 @@
-from skimage.segmentation import slic, felzenszwalb
+from skimage.segmentation import slic, felzenszwalb, mark_boundaries
 import numpy as np
 import cv2.ximgproc as cx
 import cv2
+import matplotlib.pyplot as plt
 
 # slic
 def slicData(data: np.ndarray, n_segments: int = 40, compactness: float = 0.2, sigma: float=0.5):
@@ -50,9 +51,9 @@ def slicsData(data: np.ndarray, algorithm_name: str, region_size: int = 30, rule
     block_num = np.max(slic_labels)
     return slic_labels, block_num+1
 
-def superpixels(data: np.ndarray, name: str):
+def superpixels(data: np.ndarray, name: str, n_segments: int = 40):
     if name == 'SLIC':
-        return slicData(data)
+        return slicData(data, n_segments)
     elif name == 'SLICS':
         return slicsData(data, algorithm_name='SLIC')
     elif name == 'SLICO':
@@ -63,3 +64,8 @@ def superpixels(data: np.ndarray, name: str):
         return felzenszwalbData(data)   
     elif name == 'LSC':
         return lscData(data)
+def showSuperpixels(data: np.ndarray, segments: np.ndarray, save_png_path: str):
+    out = mark_boundaries(data, segments)
+    plt.figure()
+    plt.imshow(out)
+    plt.savefig(save_png_path + '/superpixels.png')
