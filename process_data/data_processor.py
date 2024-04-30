@@ -13,7 +13,7 @@ def countLabel(label: np.ndarray):
     # 计算了无标记的样本
     return counts[1:], class_num-1
 
-def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15, if_ratio: bool = False):
+def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15, if_ratio: bool = False, train_nums: int = 30):
 
     h, w = label.shape
     train_mask = np.zeros((h, w), dtype=bool)
@@ -26,7 +26,10 @@ def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15, if_rat
         if if_ratio:
             train_n = math.ceil(cut * ratio)
         else:
-            train_n = 30 if cut > 30 else 15
+            if train_nums >= 15:
+                train_n = 30 if cut > 30 else 15
+            else:
+                train_n = train_nums
         train_indexs = indexs[:train_n]
         train_mask[train_indexs[:, 0], train_indexs[:, 1]] = 1
         test_mask[train_indexs[:, 0], train_indexs[:, 1]] = 0

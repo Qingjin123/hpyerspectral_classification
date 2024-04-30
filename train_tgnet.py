@@ -4,7 +4,7 @@ from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
 from utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed
 from show import show_data, show_mask, plot_slic
-from model import SegNet_v2, SegNet_v1
+from model import TGNet_v1, TGNet_v2
 import torch.utils.tensorboard as tb
 import numpy as np
 import matplotlib.pyplot as plt
@@ -68,7 +68,7 @@ def train(model_name: str,
     seg_index = torch.from_numpy(seg_index).to(device)
     adj_mask = torch.from_numpy(adj_mask).to(device)
 
-    model = SegNet_v2(
+    model = TGNet_v1(
         in_channels=ndata.shape[2],
         block_num=block_num,
         class_num=class_num+1,
@@ -77,7 +77,7 @@ def train(model_name: str,
         adj_mask=adj_mask,
         device=device
         )
-
+    
     model.to(device)
 
     optimizer, scheduler = getOptimizer('adam', model.parameters(), lr, weight_decay)
@@ -103,7 +103,6 @@ def train(model_name: str,
         pre_gt_ = pre_gt_[:int(sum)]
         return pre_gt_
     
-    model.to(device)
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Parameter", style="dim")
@@ -131,19 +130,6 @@ def train(model_name: str,
         "Best Kappa": "N/A",
         "Time Spent": "N/A",
         } 
-    # def update_display(progress, parameters):
-    #     table = Table(show_header=True, header_style="bold magenta")
-    #     table.add_column("Parameter", style="dim")
-    #     table.add_column("Value")
-        
-    #     # 为每个参数填充数据
-    #     for name, value in parameters.items():
-    #         table.add_row(name, str(value))
-        
-    #     # 使用 Live 来更新输出
-    #     with Live(progress, console=console, refresh_per_second=10) as live:
-    #         # progress.refresh()  # 刷新进度条
-    #         console.print(table)  # 打印表格
         
     progress = Progress(
         "[progress.description]{task.description}",
@@ -255,7 +241,7 @@ def run():
         seeds=args.seeds,
         n_segments=args.n_segments,
         device_name=args.device_name,
-        train_nums=args.train_nums,
+        train_nums=args.train_nums
     )
 # model_name: str, 
 #           data_name: str,

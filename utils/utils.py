@@ -25,6 +25,7 @@ def parser():
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.0005, help='Learning rate.')
     parser.add_argument('--epoch', type=int, default=500, help='Number of training epochs.')
+    parser.add_argument('--train_nums', type=int, default=30, help='Number of training samples.')
 
     return parser.parse_args()
 
