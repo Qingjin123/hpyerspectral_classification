@@ -19,6 +19,7 @@ from rich.console import Console
 from rich.live import Live
 import os
 import time
+import pandas as pd
 
 def train(model_name: str, 
           data_name: str,
@@ -144,7 +145,7 @@ def train(model_name: str,
         
         # 使用 Live 来更新输出
         with Live(progress, console=console, refresh_per_second=10) as live:
-            progress.refresh()  # 刷新进度条
+            # progress.refresh()  # 刷新进度条
             console.print(table)  # 打印表格
         
     progress = Progress(
@@ -242,16 +243,11 @@ def train(model_name: str,
             time.sleep(0.1)
 
     # 将最佳oa、aa、kappa记录到record.txt中
-    # 检测是否有该文件：
-    record_path = 'record.txt'
-    if os.path.exists(record_path):
-        record_file = open(record_path, 'a')
-    else:
-        record_file = open(record_path, 'w')
-    # 记录：
-    record_file.write('\n')
-    record_file.write(parameters)
-    record_file.close()
+    parameters['ac_list'] = record[-1][4]
+    df = pd.read_csv('data.csv')
+    df = df.append(parameters, ignore_index=True)
+    df.to_csv('data.csv', index=False)
+
 
 def run():
     args = parser()
