@@ -6,3 +6,4 @@ __version__ = '0.1.0'
 __author__ = 'Qingjin'
 
 from utils.utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed, calculateTopkAccuracy
+from utils.mutiprocess import train_model, train_pair, setup_logger
