@@ -1,48 +1,65 @@
 from load_data import loadData
-from logger import readYaml
+from logger import readYaml, saveYaml
 from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
-from utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed, getMetrics
+from utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed
 from show import show_data, show_mask, plot_slic
-from model import SegNet
+from model import SegNet_v2, SegNet_v1, TGNet_v1, SegNet
 import torch.utils.tensorboard as tb
-import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import time
+import pandas as pd
+from tqdm import tqdm
 
-def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
-    superpixels_name = args.superpixel_name
-    model_name = args.model_name
-    data_name = args.data_name
+def train(
+        model_name: str, 
+        data_name: str,
+        superpixels_name: str,
+        gnn_function_name: str='gcn',
+        lr: float = 5e-4,
+        epochs: int = 500,
+        weight_decay: float = 1e-4,
+        batch_size: int = 1,
+        ratio: float = 0.15,
+        seeds: int = None,
+        n_segments: int = 40,
+        train_nums: int = 30,
+        device_name:str = None,
+        if_ratio: bool = False,
+        yaml_path: str = 'dataset/data_info.yaml'
+        ):
+    # print
+    print('\n')
+    print('model_name:', model_name)
+    print('data_name:', data_name)
+    print('gnn_function_name:', gnn_function_name)
 
-    print('data name:', data_name)
-    print('superpixels name:', superpixels_name)
+    # data
     data, label = loadData(readYaml(yaml_path), data_name)
-    print('data shape:', data.shape)
     ndata = normData(data)
+    
+    # seed
+    seed = setupSeed(seeds)
 
-    seed = setupSeed(None)
-    tb_dir, model_dir, img_dir, png_path = mkdir(data_name, model_name)
+    # mkdir
+    _, model_dir, img_dir, png_path = mkdir(data_name, model_name)
 
-    writer = tb.SummaryWriter(tb_dir)
-    writer.add_text('data name:', data_name)
-    writer.add_text('lr:', str(args.lr))
-    writer.add_text('seed:', str(seed))
-
+    # show data
     show_data(ndata, label, data_name, if_pca=False, if_tsne=False, save_png_path=png_path)
-
     count, class_num = countLabel(label)
-    train_mask, test_mask = sampleMask(label, count, 0.15)
+    train_mask, test_mask = sampleMask(label, count, ratio, if_ratio, train_nums)
     show_mask(train_mask, label, data_name, 'train', png_path)
     show_mask(test_mask, label, data_name, 'test', png_path)
-
-    seg_index, block_num = superpixels(ndata, superpixels_name)
+    seg_index, block_num = superpixels(ndata, superpixels_name, n_segments)
     plot_slic(seg_index, data_name, png_path)
     adj_mask = np.ones((block_num, block_num), dtype=np.float32)
+    print('seed:', seed)
     print('block_num:', block_num)
+    print('class_num:', class_num)
 
-    device = getDevice('mps')
+    device = getDevice(device_name)
 
     ndata = torch.from_numpy(ndata).to(device)
     label =  torch.from_numpy(label).to(device)
@@ -51,21 +68,29 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
     seg_index = torch.from_numpy(seg_index).to(device)
     adj_mask = torch.from_numpy(adj_mask).to(device)
 
-    model = SegNet(
+    if model_name == 'segnet_v1':
+        Model = SegNet_v1
+    elif model_name == 'segnet_v2':
+        Model = SegNet_v2
+    elif model_name == 'tgnet_v1':
+        Model = TGNet_v1
+    else:
+        print('model_name error')
+
+    model = Model(
         in_channels=ndata.shape[2],
         block_num=block_num,
         class_num=class_num+1,
-        batch_size=args.batch_size,
+        batch_size=batch_size,
+        gnn_name=gnn_function_name,
         adj_mask=adj_mask,
         device=device
         )
     
     model.to(device)
-
-    optimizer, scheduler = getOptimizer('adam', model.parameters(), args.lr, 0.0001)
-
+    optimizer, scheduler = getOptimizer('adam', model.parameters(), lr, weight_decay)
     loss_function = getLoss('cross_entropy')
-    
+
     # record
     train_loss = []
     train_los = []
@@ -73,7 +98,7 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
     test_acc = []
     record = []
     best_value = [0 ,0, 0, 0, []] #[oa, aa, kappa]
-    
+
     def prediction(classes:torch.Tensor, gt:torch.Tensor, mask:torch.tensor):
         sum = mask.sum()
         
@@ -84,13 +109,31 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
         pre_gt_ = pre_gt[torch.argsort(pre_gt[:,0],descending=True)]
         pre_gt_ = pre_gt_[:int(sum)]
         return pre_gt_
-        
-    model.to(device)
-    for epoch in tqdm.tqdm(range(args.epoch)):
+    
+    parameters = {
+        "model name": model_name,
+        "data name": data_name,
+        "gnn name": gnn_function_name,
+        "superpixel name": superpixels_name,
+        "class number": class_num,
+        "seed":seed,
+        "lr":lr,
+        "block number":block_num,
+        "Epoch": 0,
+        "Best Epoch": 0,
+        "Best OA": 0,
+        "Best AA": 0,
+        "Best Kappa": 0,
+        "Time Spent": 0,
+        "Ac List": None
+        } 
+    
+    start_time = time.time()
+    print('Training...')
+    for epoch in tqdm(range(epochs)):
         model.train()
-        # print('training, epochs: ', epoch)
         final, finalsoft = model(ndata, seg_index)
-        exit()
+
         pred_gt = prediction(final, label, train_mask)
         
         loss1 = loss_function(pred_gt[:,1:],pred_gt[:,0].long())
@@ -102,59 +145,62 @@ def train(args: dict = parser(), yaml_path: str = 'dataset/data_info.yaml'):
         optimizer.step()
         scheduler.step()
 
-        writer.add_scalar('train_loss', train_loss[-1], epoch)
-        # print('train_loss: ', train_loss[-1])
-        
-        # 记录梯度
-        for name, param in model.named_parameters():
-            writer.add_histogram(name, param.clone().cpu().data.numpy(), epoch)
+        with torch.no_grad():
+            final, _ = model(ndata, seg_index)
+            pred_gt = prediction(final, label, test_mask)
 
-        if (epoch % 3 == 0) and epoch >= 1:
-            # model.eval()
-            with torch.no_grad():
-            # print('\ntesting...')
-                final, _ = model(ndata, seg_index)
-                pred_gt = prediction(final, label, test_mask)
+            loss2 = loss_function(pred_gt[:,1:], pred_gt [:,0].long())
+            train_los.append(float(loss1))
+            test_loss.append(float(loss2))
 
-                loss2 = loss_function(pred_gt[:,1:], pred_gt [:,0].long())
-                train_los.append(float(loss1))
-                test_loss.append(float(loss2))
-                writer.add_scalar('test_loss', test_loss[-1], epoch)
-                # writer.add_image('test image', torch.max(torch.softmax(final[0].cpu(), dim =0),dim = 0)[1].cpu()*(label.cpu()>0).float(), epoch)
-                OA, AA, kappa, ac_list = performance(pred_gt[:,1:], pred_gt[:,0].long(), class_num+1)
-                # OA, AA, kappa, ac_list = getMetrics(pred_gt[:,1:], pred_gt[:,0].long())
+            OA, AA, kappa, ac_list = performance(pred_gt[:,1:].cpu(), pred_gt[:,0].long().cpu(), class_num)
 
-                print('epoch: {}, OA: {:.4f}, AA: {:.4f}, Kappa: {:.4f}'.format(epoch, OA, AA, kappa))
-                print('ac_list:', ac_list)
 
-                test_acc.append(ac_list)
-                record.append([epoch, loss1.item(), loss2.item(), ac_list, OA, AA, kappa])
-                # writer.add_scalar('test_acc', ac_list, epoch)
-                writer.add_scalar('OA', OA, epoch)
-                writer.add_scalar('AA', AA, epoch)
-                writer.add_scalar('kappa', kappa, epoch)
-                
-                if best_value[3] < kappa:
-                    best_value = [epoch, OA, AA, kappa, ac_list] 
-                    torch.save(model.state_dict(), model_dir  + '/' + 'lr_'+ str(args.lr) + '_model.pth')
-                    
-                    plt.figure()
-                    plt.imshow(torch.max(torch.softmax(final[0].cpu(), dim =0),dim = 0)[1].cpu()*(label.cpu()>0).float())
-                    plt.savefig(img_dir + '/' +'DMSGer' + '_epoch_'+str(epoch)+'_OA_'+str(round(OA, 2))+'_AA_'+str(round(AA, 2))+'_KAPPA_'+str(round(kappa, 2))+'.png')
-                    plt.close()
+            test_acc.append(ac_list)
+            record.append([epoch, loss1.item(), loss2.item(), ac_list, OA, AA, kappa])
+            
+            if best_value[3] < kappa:
+                best_value = [epoch, OA, AA, kappa, ac_list] 
+                torch.save(model.state_dict(), model_dir  + '/' + 'lr_'+ str(lr) + '_model.pth')
     
-    
-    plt.figure()
-    plt.title('train loss and test loss')
-    plt.plot(train_los, label='train_loss',c='blue')
-    plt.plot(test_loss, label='test_loss', c='red')
-    plt.savefig(img_dir + '/'+'DMSGer_' + 'train_and_test_loss' + 'lr' + str(args.lr) +'.png')
-    plt.close()
-    
-    writer.close()
-    print('best_oa:',best_value[1], 'best_aa:',best_value[2], 'best_kappa:',best_value[3])
-    print('best_accuracy_list:',best_value[4], 'epoch:', best_value[0])
+                plt.figure()
+                plt.imshow(torch.max(torch.softmax(final[0].cpu(), dim =0),dim = 0)[1].cpu()*(label.cpu()>0).float())
+                plt.savefig(img_dir + '/' +'DMSGer' + '_epoch_'+str(epoch)+'_OA_'+str(round(OA, 2))+'_AA_'+str(round(AA, 2))+'_KAPPA_'+str(round(kappa, 2))+'.png')
+                plt.close()
 
+        end_time = time.time()
+
+        parameters['Epoch'] = str(epoch+1)
+        parameters['Best Epoch'] = best_value[0]
+        parameters['Best OA'] = round(best_value[1], 5)
+        parameters['Best AA'] = round(best_value[2], 5)
+        parameters['Best Kappa'] = round(best_value[3], 5)
+        parameters['Time Spent'] = round(end_time - start_time, 5)
+        parameters['Ac List'] = best_value[4]
+
+    for key, value in parameters.items():
+        print(key, ':', value)
+
+    parameters_yaml = 'parameters.yaml'
+    saveYaml(parameters, parameters_yaml)
+
+def run():
+    args = parser()
+    train(
+        model_name=args.model_name,
+        data_name=args.data_name,
+        superpixels_name=args.superpixel_name,
+        gnn_function_name=args.gnn_function_name,
+        lr=args.lr,
+        epochs=args.epoch,
+        weight_decay=args.weight_decay,
+        ratio=args.ratio,
+        if_ratio=args.if_ratio,
+        seeds=args.seeds,
+        n_segments=args.n_segments,
+        device_name=args.device_name,
+        train_nums=args.train_nums,
+    )
 
 if __name__ == '__main__':
-    train()
+    run()

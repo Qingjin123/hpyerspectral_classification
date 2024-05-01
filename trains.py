@@ -103,7 +103,6 @@ def train(model_name: str,
         pre_gt_ = pre_gt_[:int(sum)]
         return pre_gt_
     
-    model.to(device)
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Parameter", style="dim")

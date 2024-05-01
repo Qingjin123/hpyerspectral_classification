@@ -7,3 +7,10 @@ def readYaml(yaml_path: str):
         except yaml.YAMLError as exc:
             print(exc)
     return yaml_data
+
+def saveYaml(yaml_path: str, data: dict):
+    with open(yaml_path, 'a') as stream:
+        try:
+            yaml.dump(data, stream)
+        except yaml.YAMLError as exc:
+            print(exc)

@@ -6,13 +6,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 import random
 from datetime import datetime
 import os
-import sklearn.metrics as sm
 
 def parser():
     parser = argparse.ArgumentParser(description='Arguments for GCN based hyperspectral image classification.')
 
     parser.add_argument('--data_name', type=str, default='Indian_pines', help='Name of the dataset.')
-    parser.add_argument('--model_name', type=str, default='DMSGCN', help='Name of the model.')
+    parser.add_argument('--model_name', type=str, default='SegNet_v1', help='Name of the model.')
     parser.add_argument('--superpixel_name', type=str, default='SLIC', help='Name of superpixel function')
     parser.add_argument('--gnn_function_name', type=str, default='gcn', help='Name of gnn function')
     parser.add_argument('--ratio', type=float, default=0.15, help='Ratio of the training data.')
@@ -26,7 +25,6 @@ def parser():
     parser.add_argument('--lr', type=float, default=0.0005, help='Learning rate.')
     parser.add_argument('--epoch', type=int, default=500, help='Number of training epochs.')
     parser.add_argument('--train_nums', type=int, default=30, help='Number of training samples.')
-    parser.add_argument('--gpu', type=int, help='GPU ID to use for training.', required=False, default=0)
 
     return parser.parse_args()
 
