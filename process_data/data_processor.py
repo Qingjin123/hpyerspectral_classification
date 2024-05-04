@@ -1,19 +1,25 @@
-from sklearn.preprocessing import normalize
 import numpy as np
 import math
+
 
 def normData(data: np.ndarray):
     mean = np.mean(data)
     std = np.std(data)
-    return (data - mean)/std
+    return (data - mean) / std
+
 
 def countLabel(label: np.ndarray):
     unique_labels, counts = np.unique(label, return_counts=True)
     class_num = len(unique_labels)
     # 计算了无标记的样本
-    return counts[1:], class_num-1
+    return counts[1:], class_num - 1
 
-def sampleMask(label: np.ndarray, count: np.ndarray, ratio: float = 0.15, if_ratio: bool = False, train_nums: int = 30):
+
+def sampleMask(label: np.ndarray,
+               count: np.ndarray,
+               ratio: float = 0.15,
+               if_ratio: bool = False,
+               train_nums: int = 30):
 
     h, w = label.shape
     train_mask = np.zeros((h, w), dtype=bool)

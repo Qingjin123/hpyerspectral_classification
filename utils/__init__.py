@@ -5,4 +5,5 @@
 __version__ = '0.1.0'
 __author__ = 'Qingjin'
 
-from utils.utils import parser, performance, mkdir, getDevice, getOptimizer, getLoss, setupSeed, calculateTopkAccuracy
+from utils.utils import parser, performance, mkdir, getDevice
+from utils.utils import getOptimizer, getLoss, setupSeed, calculateTopkAccuracy

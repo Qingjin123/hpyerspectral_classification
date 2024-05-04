@@ -2,10 +2,11 @@ from .cores import GNNlayer
 from .transformer import Transformer_like
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 
+
 class TGNet_v1(nn.Module):
+
     def __init__(self,
                  in_channels: int,
                  block_num: int,
@@ -21,20 +22,23 @@ class TGNet_v1(nn.Module):
 
         # 使用 GNNlayer 构建 GCN 层
         self.tg_layers = nn.ModuleList([
-            Transformer_like(in_channels, in_channels, block_num, batch_size, adj_mask, gnn_name, device=device)
-            for _ in range(scale_layer)
+            Transformer_like(in_channels,
+                             in_channels,
+                             block_num,
+                             batch_size,
+                             adj_mask,
+                             gnn_name,
+                             device=device) for _ in range(scale_layer)
         ])
 
-        self.gcnall = GNNlayer(
-            in_channels=int(in_channels * scale_layer),
-            out_channels=class_num,
-            block_num=block_num,
-            batch_size=batch_size,
-            adj_mask=adj_mask,
-            gnn_name='gcn',
-            classification=True,
-            device=device
-        )
+        self.gcnall = GNNlayer(in_channels=int(in_channels * scale_layer),
+                               out_channels=class_num,
+                               block_num=block_num,
+                               batch_size=batch_size,
+                               adj_mask=adj_mask,
+                               gnn_name=gnn_name,
+                               classification=True,
+                               device=device)
 
         self.device = device
         self.block_num = block_num
@@ -57,8 +61,10 @@ class TGNet_v1(nn.Module):
         finall = self.gcnall(torch.cat(features, dim=1), index)
 
         return finall, self.softmax(finall)
-    
+
+
 class TGNet_v2(nn.Module):
+
     def __init__(self,
                  in_channels: int,
                  block_num: int,
@@ -74,20 +80,23 @@ class TGNet_v2(nn.Module):
 
         # 使用 GNNlayer 构建 GCN 层
         self.tg_layers = nn.ModuleList([
-            Transformer_like(in_channels, in_channels, block_num, batch_size, adj_mask, gnn_name, device=device)
-            for _ in range(scale_layer)
+            Transformer_like(in_channels,
+                             in_channels,
+                             block_num,
+                             batch_size,
+                             adj_mask,
+                             gnn_name,
+                             device=device) for _ in range(scale_layer)
         ])
 
-        self.gcnall = GNNlayer(
-            in_channels=int(in_channels * scale_layer),
-            out_channels=class_num,
-            block_num=block_num,
-            batch_size=batch_size,
-            adj_mask=adj_mask,
-            gnn_name='gcn',
-            classification=True,
-            device=device
-        )
+        self.gcnall = GNNlayer(in_channels=int(in_channels * scale_layer),
+                               out_channels=class_num,
+                               block_num=block_num,
+                               batch_size=batch_size,
+                               adj_mask=adj_mask,
+                               gnn_name=gnn_name,
+                               classification=True,
+                               device=device)
 
         self.device = device
         self.block_num = block_num
@@ -101,6 +110,7 @@ class TGNet_v2(nn.Module):
         upsample = nn.UpsamplingBilinear2d(size=(x.shape[2], x.shape[3]))
 
         features = []
+        f_p = x
         for i, gcn_layer in enumerate(self.tg_layers):
             if i > 0:
                 x = f_p  # 使用上一层的输出作为输入

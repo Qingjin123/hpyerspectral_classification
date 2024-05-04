@@ -1,0 +1,69 @@
+Ac List: !!python/object/apply:numpy.core.multiarray._reconstruct
+  args:
+  - !!python/name:numpy.ndarray ''
+  - !!python/tuple
+    - 0
+  - !!binary |
+    Yg==
+  state: !!python/tuple
+  - 1
+  - !!python/tuple
+    - 16
+  - &id001 !!python/object/apply:numpy.dtype
+    args:
+    - f8
+    - false
+    - true
+    state: !!python/tuple
+    - 3
+    - <
+    - null
+    - null
+    - null
+    - -1
+    - -1
+    - 0
+  - false
+  - !!binary |
+    AAAAAAAA8D+BBMWPMXfnP83MzMzMzOw/5WGh1jTv7j+BBMWPMXfnPwAAAAAAAPA/AAAAAAAA8D8A
+    AAAAAADwPwAAAAAAAPA/5WGh1jTv7j+BBMWPMXfnP+hqK/aX3e0/AAAAAAAA8D8AAAAAAADwPwAA
+    AAAAAPA/AAAAAAAAAAA=
+Best AA: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  Vz7L8+Du6z8=
+Best Epoch: 480
+Best Kappa: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  MjhKXp1j7T8=
+Best OA: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  izIbZJKR7T8=
+Epoch: '500'
+Time Spent: 347.84489
+block number: !!python/object/apply:numpy.core.multiarray.scalar
+- !!python/object/apply:numpy.dtype
+  args:
+  - i8
+  - false
+  - true
+  state: !!python/tuple
+  - 3
+  - <
+  - null
+  - null
+  - null
+  - -1
+  - -1
+  - 0
+- !!binary |
+  EgAAAAAAAAA=
+class number: 16
+data name: Indian_pines
+gnn name: fagcn
+lr: 0.0005
+model name: tgnet_v1
+seed: 117711416
+superpixel name: SLIC
