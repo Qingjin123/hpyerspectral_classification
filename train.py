@@ -4,7 +4,7 @@ from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
 from utils import parser, performance, mkdir, getDevice
 from utils import getOptimizer, getLoss, setupSeed
-from show import show_data, show_mask, plot_slic
+from show import show_data, show_mask, plot_slic, plot_epoch_features
 from model import SegNet_v2, SegNet_v1, TGNet_v1
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ def train(model_name: str,
           seeds: int = None,
           n_segments: int = 40,
           train_nums: int = 30,
-          scale_layer: int = 4,
+          scale_layer: int = 1,
           device_name: str = None,
           if_ratio: bool = False,
           yaml_path: str = 'dataset/data_info.yaml'):
@@ -49,8 +49,8 @@ def train(model_name: str,
     show_data(ndata,
               label,
               data_name,
-              if_pca=False,
-              if_tsne=False,
+              if_pca=True,
+              if_tsne=True,
               save_png_path=png_path)
     count, class_num = countLabel(label)
     train_mask, test_mask = sampleMask(label, count, ratio, if_ratio,
@@ -91,6 +91,10 @@ def train(model_name: str,
                   device=device,
                   scale_layer=scale_layer)
 
+    total_params = sum(p.numel() for p in model.parameters()
+                       if p.requires_grad)
+    print("Total trainable parameters:", total_params)
+
     model.to(device)
     optimizer, scheduler = getOptimizer('adam', model.parameters(), lr,
                                         weight_decay)
@@ -104,6 +108,7 @@ def train(model_name: str,
     record = []
     # [oa, aa, kappa]
     best_value = [0, 0, 0, 0, []]
+
     def prediction(classes: torch.Tensor, gt: torch.Tensor,
                    mask: torch.tensor):
         sum = mask.sum()
@@ -152,6 +157,9 @@ def train(model_name: str,
         optimizer.step()
         scheduler.step()
 
+        plot_epoch_features(epoch,
+                            finalsoft.detach().cpu(), data_name, png_path)
+
         with torch.no_grad():
             final, _ = model(ndata, seg_index)
             pred_gt = prediction(final, label, test_mask)
@@ -187,12 +195,12 @@ def train(model_name: str,
 
         end_time = time.time()
 
-        parameters['Epoch'] = str(epoch + 1)
-        parameters['Best Epoch'] = best_value[0]
-        parameters['Best OA'] = round(best_value[1], 5)
-        parameters['Best AA'] = round(best_value[2], 5)
-        parameters['Best Kappa'] = round(best_value[3], 5)
-        parameters['Time Spent'] = round(end_time - start_time, 5)
+        parameters['Epoch'] = int(epoch + 1)
+        parameters['Best Epoch'] = int(best_value[0])
+        parameters['Best OA'] = float(round(best_value[1], 5))
+        parameters['Best AA'] = float(round(best_value[2], 5))
+        parameters['Best Kappa'] = float(round(best_value[3], 5))
+        parameters['Time Spent'] = float(round(end_time - start_time, 5))
         parameters['Ac List'] = best_value[4]
 
     for key, value in parameters.items():

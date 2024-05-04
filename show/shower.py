@@ -99,3 +99,15 @@ def plot_slic(seg_index: np.ndarray, data_name: str, save_png_path: str):
     plt.title('slic of {}'.format(data_name))
     plt.savefig(save_png_path + '/' + data_name + ' slic.png')
     plt.close()
+
+
+def plot_epoch_features(epoch: int, data: np.ndarray, data_name: str,
+                        save_png_path: str):
+    tsne = TSNE(n_components=2)
+    data_tsne = tsne.fit_transform(data)
+    plt.figure()
+    plt.scatter(data_tsne[:, 0], data_tsne[:, 1], c=epoch, s=1)
+    plt.title(f't-SNE of {data_name}_{epoch}')
+    plt.savefig(save_png_path + '/' + data_name + f'_{epoch}' +
+                ' tsne_data.png')
+    plt.close()

@@ -75,7 +75,7 @@ def parser():
                         help='Number of training samples.')
     parser.add_argument('--scale_layer',
                         type=int,
-                        default=4,
+                        default=1,
                         help='Number of scale layers.')
 
     return parser.parse_args()
