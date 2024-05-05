@@ -49,8 +49,8 @@ def train(model_name: str,
     show_data(ndata,
               label,
               data_name,
-              if_pca=True,
-              if_tsne=True,
+              if_pca=False,
+              if_tsne=False,
               save_png_path=png_path)
     count, class_num = countLabel(label)
     train_mask, test_mask = sampleMask(label, count, ratio, if_ratio,
