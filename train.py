@@ -12,11 +12,11 @@ import torch
 import time
 from tqdm import tqdm
 
-data_seed = {
-    'Indian_pines': 2073516639,
-    'PaviaU': 1568036650,
-    'Salinas': 3503767999,
-}
+# data_seed = {
+#     'Indian_pines': 2073516639,
+#     'PaviaU': 1568036650,
+#     'Salinas': 3503767999,
+# }
 
 
 def train(model_name: str,
@@ -45,10 +45,10 @@ def train(model_name: str,
     data, label = loadData(readYaml(yaml_path), data_name)
     ndata = normData(data)
 
-    seed = setupSeed(data_seed[data_name])
+    # seed = setupSeed(data_seed[data_name])
 
-    # # seed
-    # seed = setupSeed(seeds)
+    # seed
+    seed = setupSeed(seeds)
 
     # mkdir
     _, model_dir, img_dir, png_path = mkdir(data_name, model_name)
