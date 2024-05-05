@@ -15,7 +15,7 @@ class HyperspectralPixelClassifier:
         try:
             X_train, X_test, y_train, y_test = train_test_split(X,
                                                                 y_true,
-                                                                test_size=0.85)
+                                                                test_size=0.95)
             return X_train, X_test, y_train, y_test
         except ValueError:
             print("Error: Data shape is not compatible.")

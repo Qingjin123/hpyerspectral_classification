@@ -166,9 +166,9 @@ training_time, testing_time
 test_label_mask_cpu = test_label_mask.cpu().numpy()[:,0].astype('bool')
 test_samples_gt_cpu = test_samples_gt.cpu().numpy().astype('int64')
 predict = torch.argmax(output, 1).cpu().numpy()
-import matplotlib.pyplot as plt
-plt.imshow(predict.reshape(145, 145))
-plt.savefig('pred.png')
+# import matplotlib.pyplot as plt
+# plt.imshow(predict.reshape(145, 145))
+# plt.savefig('pred.png')
 
 classification = classification_report(test_samples_gt_cpu[test_label_mask_cpu], 
                                     predict[test_label_mask_cpu]+1, digits=4)

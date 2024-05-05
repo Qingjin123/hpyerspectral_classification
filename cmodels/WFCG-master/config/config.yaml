@@ -2,12 +2,12 @@ model:
   model_name: "WFCG"
 
 data_input: 
-  dataset_name: IndianPines
+  # dataset_name: IndianPines
   # dataset_name = 'Loukia'
   # dataset_name = 'Dioni'
   # dataset_name = 'hanchuan'
   # dataset_name = "pavia"
-  # dataset_name = "Salinas"
+  dataset_name = "Salinas"
   classes: 16
 
 data_split:

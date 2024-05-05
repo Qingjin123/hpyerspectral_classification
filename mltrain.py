@@ -57,7 +57,7 @@ def train_lp(data_name: str, yaml_path: str = 'dataset/data_info.yaml'):
 
 if __name__ == '__main__':
     yaml_path = 'dataset/data_info.yaml'
-    data_names = ['PaviaU', 'Salinas']  # 替换成你的数据名称列表
+    data_names = ['Indian_pines', 'PaviaU', 'Salinas']  # 替换成你的数据名称列表
 
     oa_list = []
     kappa_list = []
