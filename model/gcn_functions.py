@@ -158,6 +158,8 @@ class GAT(nn.Module):
         self.share_weights = share_weights
 
         if self.is_concat:
+            if out_features == 9:
+                self.n_hidden = 9
             assert out_features % n_heads == 0
             self.n_hidden = out_features // n_heads
         else:

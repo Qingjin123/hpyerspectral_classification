@@ -4,13 +4,19 @@ from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
 from utils import parser, performance, mkdir, getDevice
 from utils import getOptimizer, getLoss, setupSeed
-from show import show_data, show_mask, plot_slic, plot_epoch_features
+from show import show_data, show_mask, plot_slic
 from model import SegNet_v2, SegNet_v1, TGNet_v1
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import time
 from tqdm import tqdm
+
+data_seed = {
+    'Indian_pines': 2073516639,
+    'PaviaU': 1568036650,
+    'Salinas': 3503767999,
+}
 
 
 def train(model_name: str,
@@ -24,7 +30,7 @@ def train(model_name: str,
           ratio: float = 0.15,
           seeds: int = None,
           n_segments: int = 40,
-          train_nums: int = 30,
+          train_nums: int = 5,
           scale_layer: int = 1,
           device_name: str = None,
           if_ratio: bool = False,
@@ -39,8 +45,10 @@ def train(model_name: str,
     data, label = loadData(readYaml(yaml_path), data_name)
     ndata = normData(data)
 
-    # seed
-    seed = setupSeed(seeds)
+    seed = setupSeed(data_seed[data_name])
+
+    # # seed
+    # seed = setupSeed(seeds)
 
     # mkdir
     _, model_dir, img_dir, png_path = mkdir(data_name, model_name)
@@ -102,25 +110,23 @@ def train(model_name: str,
 
     # record
     train_loss = []
-    train_los = []
-    test_loss = []
     test_acc = []
     record = []
     # [oa, aa, kappa]
     best_value = [0, 0, 0, 0, []]
 
-    def prediction(classes: torch.Tensor, gt: torch.Tensor,
-                   mask: torch.tensor):
-        sum = mask.sum()
+    # def prediction(classes: torch.Tensor, gt: torch.Tensor,
+    #                mask: torch.tensor):
+    #     sum = mask.sum()
 
-        train_gt = gt * mask
-        train_gt = label * train_mask
-        pre_gt = torch.cat((train_gt.unsqueeze(0).to(device), classes[0]),
-                           dim=0)
-        pre_gt = pre_gt.view(class_num + 2, -1).permute(1, 0)
-        pre_gt_ = pre_gt[torch.argsort(pre_gt[:, 0], descending=True)]
-        pre_gt_ = pre_gt_[:int(sum)]
-        return pre_gt_
+    #     train_gt = gt * mask
+    #     train_gt = label * train_mask
+    #     pre_gt = torch.cat((train_gt.unsqueeze(0).to(device), classes[0]),
+    #                        dim=0)
+    #     pre_gt = pre_gt.view(class_num + 2, -1).permute(1, 0)
+    #     pre_gt_ = pre_gt[torch.argsort(pre_gt[:, 0], descending=True)]
+    #     pre_gt_ = pre_gt_[:int(sum)]
+    #     return pre_gt_
 
     parameters = {
         "model name": model_name,
@@ -140,43 +146,40 @@ def train(model_name: str,
         "Ac List": None
     }
 
+    label = label.unsqueeze(0)  # label 现在的形状是 [1, height, width]
+    train_mask = train_mask.unsqueeze(0)
     start_time = time.time()
     print('Training...')
     for epoch in tqdm(range(epochs)):
         model.train()
         final, finalsoft = model(ndata, seg_index)
 
-        pred_gt = prediction(final, label, train_mask)
+        # pred_gt = prediction(final, label, train_mask)
 
-        loss1 = loss_function(pred_gt[:, 1:], pred_gt[:, 0].long())
+        # loss1 = loss_function(pred_gt[:, 1:], pred_gt[:, 0].long())
+        loss1 = loss_function(finalsoft, label)
+        # 将 train_mask 应用到计算得到的逐像素损失上
+        loss = loss1 * train_mask
 
-        train_loss.append(float(loss1))
+        # 计算最终的损失值，这里通过平均所有被 mask 包含的损失
+        final_loss = loss.sum() / train_mask.sum()
+
+        # 将计算得到的损失值添加到损失列表中
+        train_loss.append(float(final_loss))
 
         optimizer.zero_grad()
-        loss1.backward()
+        final_loss.backward()
         optimizer.step()
         scheduler.step()
 
-        plot_epoch_features(epoch,
-                            finalsoft.detach().cpu(), data_name, png_path)
-
         with torch.no_grad():
-            final, _ = model(ndata, seg_index)
-            pred_gt = prediction(final, label, test_mask)
+            final, finalsoft = model(ndata, seg_index)
 
-            loss2 = loss_function(pred_gt[:, 1:], pred_gt[:, 0].long())
-            train_los.append(float(loss1))
-            test_loss.append(float(loss2))
-
-            OA, AA, kappa, ac_list = performance(pred_gt[:, 1:].cpu(),
-                                                 pred_gt[:, 0].long().cpu(),
-                                                 class_num)
-
+            OA, AA, kappa, ac_list = performance(finalsoft.cpu(),
+                                                 label.squeeze(0).cpu(),
+                                                 test_mask.cpu(), class_num)
             test_acc.append(ac_list)
-            record.append(
-                [epoch,
-                 loss1.item(),
-                 loss2.item(), ac_list, OA, AA, kappa])
+            record.append([epoch, ac_list, OA, AA, kappa])
 
             if best_value[3] < kappa:
                 best_value = [epoch, OA, AA, kappa, ac_list]
@@ -185,8 +188,9 @@ def train(model_name: str,
 
                 plt.figure()
                 plt.imshow(
-                    torch.max(torch.softmax(final[0].cpu(), dim=0),
-                              dim=0)[1].cpu() * (label.cpu() > 0).float())
+                    torch.max(torch.softmax(finalsoft[0].cpu(), dim=0),
+                              dim=0)[1].cpu() *
+                    (label.squeeze(0).cpu() > 0).float())
                 plt.savefig(img_dir + '/' + 'DMSGer' + '_epoch_' + str(epoch) +
                             '_OA_' + str(round(OA, 2)) + '_AA_' +
                             str(round(AA, 2)) + '_KAPPA_' +
@@ -208,7 +212,7 @@ def train(model_name: str,
 
     parameters_yaml = 'parameters.yaml'
     saveYaml(parameters_yaml, parameters)
-    return best_value[3:]
+    return best_value[1:]
 
 
 def run():

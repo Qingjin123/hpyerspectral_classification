@@ -9,8 +9,7 @@ import os
 
 
 def parser():
-    parser = argparse.ArgumentParser(
-        description='''Arguments for GCN based
+    parser = argparse.ArgumentParser(description='''Arguments for GCN based
                     hyperspectral image classification.''')
 
     parser.add_argument('--data_name',
@@ -71,11 +70,11 @@ def parser():
                         help='Number of training epochs.')
     parser.add_argument('--train_nums',
                         type=int,
-                        default=30,
+                        default=5,
                         help='Number of training samples.')
     parser.add_argument('--scale_layer',
                         type=int,
-                        default=1,
+                        default=4,
                         help='Number of scale layers.')
 
     return parser.parse_args()
@@ -165,7 +164,7 @@ def getOptimizer(optimizer_name: str, parameters: list, lr: float,
 
 def getLoss(loss_name):
     loss_functions = {
-        'crossentropyloss': torch.nn.CrossEntropyLoss(),
+        'crossentropyloss': torch.nn.CrossEntropyLoss(reduction='none'),
         'nllloss': torch.nn.NLLLoss()
         # add other loss functions here if needed
     }
@@ -220,21 +219,54 @@ def calculate_kappa(matrix):
     return (pa - pe) / (1 - pe)
 
 
-def performance(predict_labels, gt_labels, class_num):
+# def performance(predict_labels, gt_labels, class_num):
+#     """评估模型性能
+#     参数:
+#     predict_labels -- 模型的预测标签 (torch tensor)
+#     gt_labels -- 真实标签 (numpy array)
+#     class_num -- 总类别数（包括一个不参与分类的类别）
+#     返回:
+#     OA -- 总体准确率
+#     AA -- 平均准确率
+#     kappa -- Kappa系数
+#     accuracies -- 每类的准确率列表
+#     """
+#     pred_labels = torch.argmax(predict_labels, dim=1).numpy()
+#     # 从tensor转换为numpy，并取最大值索引
+#     matrix = calculate_confusion_matrix(pred_labels, gt_labels, class_num)
+#     accuracies = calculate_accuracy(matrix)
+#     OA = calculate_overall_accuracy(matrix)
+#     AA = calculate_average_accuracy(accuracies)
+#     kappa = calculate_kappa(matrix)
+
+#     return OA, AA, kappa, accuracies
+
+
+def performance(predict_labels, gt_labels, mask, class_num):
     """评估模型性能
     参数:
-    predict_labels -- 模型的预测标签 (torch tensor)
-    gt_labels -- 真实标签 (numpy array)
-    class_num -- 总类别数（包括一个不参与分类的类别）
+    predict_labels -- 模型的预测标签 (torch tensor),
+        shape [1, class_num, height, width]
+    gt_labels -- 真实标签 (numpy array), shape [height, width]
+    mask -- 训练样本的mask (numpy array), shape [height, width]
+    class_num -- 总类别数
     返回:
     OA -- 总体准确率
     AA -- 平均准确率
     kappa -- Kappa系数
     accuracies -- 每类的准确率列表
     """
-    pred_labels = torch.argmax(predict_labels, dim=1).numpy()
-    # 从tensor转换为numpy，并取最大值索引
-    matrix = calculate_confusion_matrix(pred_labels, gt_labels, class_num)
+    # 压缩批次维度，并取最大值索引，形成预测类别矩阵
+    pred_labels = torch.argmax(predict_labels.squeeze(0), dim=0).numpy()
+
+    # 应用mask
+    valid_indices = (mask > 0)
+    filtered_pred_labels = pred_labels[valid_indices]
+    filtered_gt_labels = gt_labels[valid_indices]
+
+    # 接下来是计算混淆矩阵和其他统计数据...
+    matrix = calculate_confusion_matrix(filtered_pred_labels,
+                                        filtered_gt_labels, class_num)
     accuracies = calculate_accuracy(matrix)
     OA = calculate_overall_accuracy(matrix)
     AA = calculate_average_accuracy(accuracies)
