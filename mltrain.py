@@ -18,7 +18,7 @@ def train_lp(data_name: str, yaml_path: str = 'dataset/data_info.yaml'):
 
     # 训练模型
     model = HyperspectralPixelClassifier()
-    model.run(data, label, f'save/{data_name}')
+    model.run(data, label)
 
     # 计算预测结果
     y_true = model.y_true
