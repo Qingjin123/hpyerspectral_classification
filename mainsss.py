@@ -2,21 +2,16 @@ from train import train
 import numpy as np
 import torch
 
-
 data_name = ['Indian_pines', 'Salinas', 'PaviaU']
-# gnn_function_name = ['gcn', 'gat', 'gin', 'gcnii', 'fagcn']
-gnn_names = ['gcn', 'fagcn']
+n_segs = [5, 20, 40, 50]
 spn = 'SLIC'
 
-print('对比实验开始')
-
-with open('experiment_results.txt', 'w') as file:
+with open('experiment_results3.txt', 'w') as file:
     file.write("Experiment Results\n")
     results = {}
 
     for data_n in data_name:
-        for gnn_n in gnn_names:
-
+        for n_seg in n_segs:
             oa_list = []
             kappa_list = []
             aa_list = []
@@ -26,10 +21,11 @@ with open('experiment_results.txt', 'w') as file:
                 ac_list_, OA_, AA_, kappa_ = train(model_name='segnet_v1',
                                                    data_name=data_n,
                                                    superpixels_name=spn,
-                                                   gnn_function_name=gnn_n,
+                                                   gnn_function_name='fagcn',
                                                    epochs=500,
                                                    train_nums=5,
-                                                   scale_layer=4)
+                                                   n_segments=n_seg,
+                                                   scale_layer=1)
                 oa_list.append(OA_)
                 kappa_list.append(kappa_)
                 aa_list.append(AA_)
@@ -47,7 +43,7 @@ with open('experiment_results.txt', 'w') as file:
             ac_lists_mean = np.mean(ac_lists, axis=0)
             ac_lists_std = np.std(ac_lists, axis=0)
 
-            results[data_n][gnn_n] = {
+            results[data_n][str(n_seg)] = {
                 "OA": {
                     "mean": oa_mean,
                     "std": oa_std
@@ -66,7 +62,7 @@ with open('experiment_results.txt', 'w') as file:
                 }
             }
             # 将统计结果写入文件
-            stats_str = f"Stats for Data: {data_n}, GNN: {gnn_n}, OA Mean: {oa_mean:.4f}, OA Std: {oa_std:.4f}, Kappa Mean: {kappa_mean:.4f}, Kappa Std: {kappa_std:.4f}, AA Mean: {aa_mean:.4f}, AA Std: {aa_std:.4f}\n"
+            stats_str = f"Stats for Data: {data_n}, GNN: fagcn , OA Mean: {oa_mean:.4f}, OA Std: {oa_std:.4f}, Kappa Mean: {kappa_mean:.4f}, Kappa Std: {kappa_std:.4f}, AA Mean: {aa_mean:.4f}, AA Std: {aa_std:.4f}\n"
             file.write(stats_str)
             print(stats_str)
 

@@ -2,21 +2,17 @@ from train import train
 import numpy as np
 import torch
 
-
 data_name = ['Indian_pines', 'Salinas', 'PaviaU']
-# gnn_function_name = ['gcn', 'gat', 'gin', 'gcnii', 'fagcn']
-gnn_names = ['gcn', 'fagcn']
+gnn_function_name = ['gcn', 'gat', 'gin', 'gcnii', 'fagcn']
 spn = 'SLIC'
 
-print('对比实验开始')
-
-with open('experiment_results.txt', 'w') as file:
+print('Experiment Results:')
+with open('experiment_results2.txt', 'w') as file:
     file.write("Experiment Results\n")
     results = {}
 
     for data_n in data_name:
-        for gnn_n in gnn_names:
-
+        for gnn_n in gnn_function_name:
             oa_list = []
             kappa_list = []
             aa_list = []
@@ -29,7 +25,7 @@ with open('experiment_results.txt', 'w') as file:
                                                    gnn_function_name=gnn_n,
                                                    epochs=500,
                                                    train_nums=5,
-                                                   scale_layer=4)
+                                                   scale_layer=1)
                 oa_list.append(OA_)
                 kappa_list.append(kappa_)
                 aa_list.append(AA_)

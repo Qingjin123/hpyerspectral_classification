@@ -208,6 +208,7 @@ def train(model_name: str,
 
     parameters_yaml = 'parameters.yaml'
     saveYaml(parameters_yaml, parameters)
+    return best_value[3:]
 
 
 def run():
