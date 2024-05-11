@@ -1,0 +1,18 @@
+Best AA: '0.9788'
+Best Epoch: '266'
+Best Kappa: '0.9527'
+Best OA: '0.9583'
+Epoch: '500'
+Test AA: '0.9783'
+Test Kappa: '0.9515'
+Test OA: '0.9572'
+Time Spent: '296.5444'
+Train loss: '2.3185'
+block number: '18'
+class number: '16'
+data name: Indian_pines
+gnn name: fagcn
+lr: '0.0005'
+model name: segnet_v1
+seed: '1657378562'
+superpixel name: SLIC

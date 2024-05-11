@@ -1,5 +1,5 @@
-from load_data import loadData, saveYaml
-from logger import readYaml
+from load_data import loadData
+from logger import readYaml, saveYaml
 from process_data import normData, countLabel, sampleMask
 from process_data import superpixels
 from utils import parser, performance, mkdir, getDevice
@@ -107,7 +107,6 @@ def train(model_name: str,
 
     # record
     train_loss = []
-    test_loss = []
     test_acc = []
     record = []
     best_value = [0, 0, 0, 0, []]  # [oa, aa, kappa]
@@ -129,7 +128,6 @@ def train(model_name: str,
         "block number": str(block_num),
         "Epoch": "0",
         "Train loss": "N/A",
-        "Test loss": "N/A",
         "Test OA": "N/A",
         "Test AA": "N/A",
         "Test Kappa": "N/A",
@@ -164,6 +162,8 @@ def train(model_name: str,
 
     task = progress.add_task("Epoch:", total=epochs)
     with Live(console=console, refresh_per_second=10):
+        label = label.unsqueeze(0)  # label 现在的形状是 [1, height, width]
+        train_mask = train_mask.unsqueeze(0)
         start_time = time.time()
         for epoch in range(epochs):
             model.train()
@@ -215,8 +215,9 @@ def train(model_name: str,
 
                     plt.figure()
                     plt.imshow(
-                        torch.max(torch.softmax(final[0].cpu(), dim=0),
-                                  dim=0)[1].cpu() * (label.cpu() > 0).float())
+                        torch.max(torch.softmax(finalsoft[0].cpu(), dim=0),
+                                  dim=0)[1].cpu() *
+                        (label.squeeze(0).cpu() > 0).float())
                     plt.savefig(img_dir + '/' + 'DMSGer' + '_epoch_' +
                                 str(epoch) + '_OA_' + str(round(OA, 2)) +
                                 '_AA_' + str(round(AA, 2)) + '_KAPPA_' +
@@ -226,7 +227,6 @@ def train(model_name: str,
             end_time = time.time()
             parameters['Epoch'] = str(epoch + 1)
             parameters['Train loss'] = str(round(train_loss[-1], 4))
-            parameters['Test loss'] = str(round(test_loss[-1], 4))
             parameters['Test OA'] = str(round(OA, 4))
             parameters['Test AA'] = str(round(AA, 4))
             parameters['Test Kappa'] = str(round(kappa, 4))
