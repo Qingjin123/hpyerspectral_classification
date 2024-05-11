@@ -44,7 +44,7 @@ class IndianRaw(DataReader):
 class SalinasRaw(DataReader):
     def __init__(self):
         super(SalinasRaw, self).__init__()
-        raw_data_package = sio.loadmat(r"E:\HSI_Classification\WFCG\Datasets\Salinas_corrected.mat")
+        raw_data_package = sio.loadmat(r"Salinas_corrected.mat")
         self.data_cube = raw_data_package["salinas_corrected"].astype(np.float32)
         truth = sio.loadmat(r"E:\HSI_Classification\WFCG\Datasets\Salinas_gt.mat")
         self.g_truth = truth["salinas_gt"].astype(np.float32)

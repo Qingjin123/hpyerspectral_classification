@@ -5,7 +5,7 @@ from process_data import superpixels
 from utils import parser, performance, mkdir, getDevice
 from utils import getOptimizer, getLoss, setupSeed
 from show import show_data, show_mask, plot_slic
-from model import SegNet_v2, SegNet_v1, TGNet_v1
+from model import SegNet_v2, SegNet_v1, TGNet_v1, TGNet_v2
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -87,6 +87,8 @@ def train(model_name: str,
         Model = SegNet_v2
     elif model_name == 'tgnet_v1':
         Model = TGNet_v1
+    elif model_name == 'tgnet_v2':
+        Model = TGNet_v2
     else:
         print('model_name error')
 
@@ -114,19 +116,6 @@ def train(model_name: str,
     record = []
     # [oa, aa, kappa]
     best_value = [0, 0, 0, 0, []]
-
-    # def prediction(classes: torch.Tensor, gt: torch.Tensor,
-    #                mask: torch.tensor):
-    #     sum = mask.sum()
-
-    #     train_gt = gt * mask
-    #     train_gt = label * train_mask
-    #     pre_gt = torch.cat((train_gt.unsqueeze(0).to(device), classes[0]),
-    #                        dim=0)
-    #     pre_gt = pre_gt.view(class_num + 2, -1).permute(1, 0)
-    #     pre_gt_ = pre_gt[torch.argsort(pre_gt[:, 0], descending=True)]
-    #     pre_gt_ = pre_gt_[:int(sum)]
-    #     return pre_gt_
 
     parameters = {
         "model name": model_name,
